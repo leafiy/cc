@@ -1,137 +1,208 @@
-# cc
+# ccusage-dashboard
 
-Use `ccusage` to collect token usage from local coding agents and store the
-aggregated fleet view in a lightweight local SQLite database.
+Local-first dashboard for aggregating coding-agent token usage with
+[`ccusage`](https://github.com/ryoppippi/ccusage). It can collect data from the
+current machine or from SSH-accessible machines, store the result in local
+SQLite, and serve a browser dashboard.
 
-## Quick start
+This project does not install background jobs, edit your SSH config, create
+services, or configure remote machines for you. Collection is always triggered
+manually by the commands below.
 
-```sh
-cd /Users/leafiy/code/cc
-npm run sync -- --timezone Asia/Shanghai
-git add README.md package.json scripts ui .gitignore
-git commit -m "Sync local ccusage data"
-git push
-```
+## Requirements
 
-## Fleet sync on 52.4
+- Node.js 18+
+- `sqlite3`
+- `npx` or `bun` on every machine where collection runs
+- SSH access for remote machines, if you use fleet collection
 
-The fleet collector runs centrally from `/Volumes/2/code/cc` on
-`leafiy@192.168.52.4`. It SSHes into each node, runs `ccusage` locally on that
-node, and writes all results into the local SQLite database on 52.4.
-To keep the 15-minute job light, each node only runs the four agent-level daily
-reports (`claude`, `codex`, `opencode`, `pi`). Monthly and all-agent views are
-derived on 52.4 from those daily rows.
+## Install
 
 ```sh
-cd /Volumes/2/code/cc
-npm run db:import-json
-npm run fleet:sync -- --timezone Asia/Shanghai
-npm run fleet:install-launchd
-npm run ui:install-launchd
+git clone git@github.com:leafiy/cc.git
+cd cc
+cp ccusage.config.example.json ccusage.config.json
 ```
 
-The launchd job runs every 15 minutes and writes logs to:
+Edit `ccusage.config.json` for your machines, display names, UI port, and
+optional weather provider.
 
-```text
-/Volumes/2/code/cc/logs/fleet-sync.launchd.log
-/Volumes/2/code/cc/logs/fleet-sync.launchd.err.log
+`ccusage.config.json` is ignored by Git. Do not commit API keys, private host
+names, or generated usage data.
+
+## Configuration
+
+All project settings live in `ccusage.config.json`.
+
+Minimal local-only config:
+
+```json
+{
+  "timezone": "Asia/Shanghai",
+  "ccusagePackage": "ccusage@20.0.14",
+  "machine": "local",
+  "agents": ["claude", "codex", "opencode", "pi"],
+  "nodes": [
+    { "id": "local", "label": "Local machine", "mode": "local" }
+  ],
+  "displayNames": {
+    "local": "Local"
+  },
+  "ui": {
+    "host": "0.0.0.0",
+    "port": 8765,
+    "dashboardDefaultPeriod": "month",
+    "clockDefaultPeriod": "week",
+    "defaultTheme": "paper"
+  },
+  "weather": {
+    "enabled": false
+  }
+}
 ```
 
-The live UI is served from 52.4:
+Remote node example:
 
-```text
-http://192.168.52.4:8765/
+```json
+{
+  "id": "workstation",
+  "label": "Workstation",
+  "host": "192.168.1.20",
+  "user": "alice",
+  "port": 22,
+  "piPaths": ["~/.omp/agent"]
+}
 ```
 
-The main runtime store is:
+Supported node fields:
 
-```text
-/Volumes/2/code/cc/data/ccusage.sqlite
-```
+- `id`: stable machine key used in SQLite and UI
+- `label`: human-readable label for logs
+- `mode`: set to `local` for the current machine
+- `host`, `user`, `port`: SSH target for remote machines
+- `enabled`: set `false` to keep a sample node in config without collecting it
+- `piPaths`: extra Oh My Pi/pi-agent roots to pass to `ccusage pi --pi-path`
 
-The UI reads SQLite through the local Node server API. Legacy JSON files under
-`data/combined` and `data/machines` are no longer written by default. To export
-them for compatibility, run:
+## Get Local Data
+
+Run ccusage on this machine and write JSON snapshots under `data/machines`:
 
 ```sh
-CCUSAGE_JSON_EXPORT=1 npm run fleet:sync -- --timezone Asia/Shanghai
-# or:
-npm run fleet:sync -- --timezone Asia/Shanghai --export-json
+npm run sync
 ```
 
-Current fleet nodes:
-
-- `52-4`: local 52.4 machine
-- `52-30`: `leafiy@192.168.52.30`
-- `52-20`: `leafiy@192.168.52.20`
-- `52-5-piggy`: `piggy@192.168.52.5`
-- `pc-2223`: `root@pc -p 2223`
-- `pc2-2223`: `root@pc2 -p 2223`
-- `pc2-2224`: `root@pc2 -p 2224`
-
-Run one node manually:
+Useful manual filters:
 
 ```sh
-npm run fleet:sync -- --node pc2-2224 --timezone Asia/Shanghai
-```
-
-On another machine, clone the same repository and run the same `npm run sync`
-command. The central fleet collector stores machine snapshots in SQLite. If
-legacy JSON export is enabled, each machine also writes to its own directory:
-
-```text
-data/machines/<machine>/latest/
-```
-
-The cross-machine aggregate is rebuilt every time in SQLite. If legacy JSON
-export is enabled, these files are also written:
-
-```text
-data/combined/daily.json
-data/combined/monthly.json
-data/combined/machines.json
-data/combined/summary.md
-```
-
-## What is collected
-
-The sync script runs `npx --yes ccusage@20.0.14` and stores JSON output for:
-
-- all supported agents detected by `ccusage`
-- Claude Code
-- Codex
-- OpenCode
-- Oh My Pi / pi-agent
-
-Oh My Pi is collected with `ccusage pi --pi-path`. The script automatically
-adds these paths when they exist:
-
-- `$PI_CODING_AGENT_DIR`
-- `~/.omp/agent`
-
-Use `--pi-path` or `CCUSAGE_PI_PATHS` for extra profile/session roots.
-
-Only aggregated usage data is stored. Prompts, responses, API keys, and local
-agent history files are not copied into this repository.
-
-## Useful options
-
-```sh
-npm run sync -- --timezone Asia/Shanghai
-npm run sync -- --machine my-laptop
-npm run sync -- --pi-path ~/.omp/agent
 npm run sync -- --since 2026-06-01
-npm run sync:offline -- --timezone Asia/Shanghai
+npm run sync -- --until 2026-06-30
+npm run sync:offline
+npm run sync -- --config ./another-config.json
 ```
 
-Multiple Oh My Pi roots can be passed as a comma-separated list:
+This mode writes legacy JSON files and rebuilds `data/combined/*.json`.
+
+## Get Remote/Fleet Data
+
+Fleet collection runs from the current machine. It SSHes into each enabled node
+from `ccusage.config.json`, runs `ccusage` on that node, and stores results in
+local SQLite:
 
 ```sh
-CCUSAGE_PI_PATHS="$HOME/.omp/agent,$HOME/.omp-work/agent" npm run sync -- --timezone Asia/Shanghai
+npm run fleet:sync
 ```
 
-If you want to use a newer ccusage build without editing the repo:
+Run only selected nodes:
 
 ```sh
-CCUSAGE_PACKAGE=ccusage@latest npm run sync -- --timezone Asia/Shanghai
+npm run fleet:sync -- --node local,workstation
 ```
+
+Export compatibility JSON as well as SQLite:
+
+```sh
+npm run fleet:sync -- --export-json
+```
+
+Remote machines must already be reachable non-interactively:
+
+```sh
+ssh alice@192.168.1.20
+```
+
+Remote machines must also have `npx` or `bun` available in `PATH`. The collector
+does not install Node, Bun, SSH keys, shells, or agent tools.
+
+## Data Store
+
+Fleet data is stored locally:
+
+```text
+data/ccusage.sqlite
+```
+
+The SQLite database stores:
+
+- raw per-machine, per-agent ccusage reports
+- machine manifests and OS metadata
+- combined daily/monthly totals
+- summary markdown
+- optional cached weather data
+
+Generated data is ignored by Git.
+
+## Run the UI
+
+```sh
+npm run ui:serve
+```
+
+Open:
+
+```text
+http://localhost:8765/
+http://localhost:8765/clock
+```
+
+If you changed `ui.port`, use that port instead.
+
+## Optional Weather
+
+The clock view can show QWeather/和风天气. Configure it in JSON:
+
+```json
+{
+  "weather": {
+    "enabled": true,
+    "provider": "qweather",
+    "apiHost": "your-api-host.re.qweatherapi.com",
+    "apiKey": "your-api-key",
+    "credentialId": "optional-credential-id",
+    "location": "101040100",
+    "cityLabel": "重庆",
+    "refreshMinutes": 30
+  }
+}
+```
+
+Use 和风 GeoAPI to look up a city or district location ID, then set
+`weather.location` to that ID. Weather is fetched server-side and cached in
+SQLite; the API key is not exposed to the dashboard HTML.
+
+## Cost Numbers
+
+Cost is the API-equivalent estimate reported by `ccusage` as `costUSD` or
+`totalCost`. It is not your real bill and does not account for subscriptions,
+bundles, credits, or local/free model usage.
+
+## Publishing
+
+Before pushing an open-source copy, check that only source files and docs are
+tracked:
+
+```sh
+git status --short
+git ls-files data
+```
+
+`git ls-files data` should print nothing.

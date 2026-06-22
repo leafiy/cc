@@ -3,12 +3,16 @@ import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import process from "node:process";
+import { renderClockDashboardHtml } from "./render-clock-dashboard.mjs";
 import { renderDashboardHtml } from "./render-dashboard.mjs";
+import { getCachedWeather, weatherCacheStatus } from "./qweather-cache.mjs";
+import { loadConfig } from "./config.mjs";
 import { getCombined, getKv, getReport, initDb } from "./sqlite-store.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
-const host = process.env.CCUSAGE_UI_HOST || "0.0.0.0";
-const port = Number(process.env.CCUSAGE_UI_PORT || 8765);
+const config = loadConfig();
+const host = config.ui?.host || "0.0.0.0";
+const port = Number(config.ui?.port || 8765);
 const types = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -23,6 +27,10 @@ http.createServer((req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
   if (url.pathname === "/" || url.pathname === "/ui/index.html") {
     sendDashboard(res, url);
+    return;
+  }
+  if (url.pathname === "/clock" || url.pathname === "/clock/") {
+    sendClockDashboard(res, url);
     return;
   }
   if (serveData(url.pathname, res)) return;
@@ -47,8 +55,20 @@ http.createServer((req, res) => {
 
 function sendDashboard(res, url) {
   const html = renderDashboardHtml({
-    period: url.searchParams.get("period") || "month",
-    theme: url.searchParams.get("theme") || "paper"
+    period: url.searchParams.get("period") || config.ui?.dashboardDefaultPeriod || "month",
+    theme: url.searchParams.get("theme") || config.ui?.defaultTheme || "paper"
+  });
+  res.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store"
+  });
+  res.end(html);
+}
+
+function sendClockDashboard(res, url) {
+  const html = renderClockDashboardHtml({
+    period: url.searchParams.get("period") || config.ui?.clockDefaultPeriod || "week",
+    theme: url.searchParams.get("theme") || config.ui?.defaultTheme || "paper"
   });
   res.writeHead(200, {
     "content-type": "text/html; charset=utf-8",
@@ -72,6 +92,12 @@ function serveData(pathname, res) {
     if (normalized === "/api/summary" || normalized === "/data/combined/summary.md") {
       return sendTextOrFallback(res, getKv("summary.md"), "/data/combined/summary.md", "text/markdown; charset=utf-8");
     }
+    if (normalized === "/api/weather") {
+      return sendJson(res, weatherCacheStatus());
+    }
+    if (normalized === "/api/weather/refresh") {
+      return sendJson(res, getCachedWeather());
+    }
 
     const reportMatch = normalized.match(/^\/(?:api\/)?data\/machines\/([^/]+)\/latest\/([^/.]+)\.(daily|monthly)\.json$/)
       || normalized.match(/^\/api\/machines\/([^/]+)\/latest\/([^/.]+)\.(daily|monthly)$/);
@@ -86,6 +112,12 @@ function serveData(pathname, res) {
     return true;
   }
   return false;
+}
+
+function sendJson(res, payload) {
+  res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+  res.end(`${JSON.stringify(payload)}\n`);
+  return true;
 }
 
 function sendJsonOrFallback(res, payload, fallbackPath) {

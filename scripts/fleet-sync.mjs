@@ -13,32 +13,20 @@ import {
   saveManifest,
   saveReport
 } from "./sqlite-store.mjs";
+import { loadConfig, normalizeReports } from "./config.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const defaultTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
-const nodes = [
-  { id: "52-4", label: "52.4 local", mode: "local" },
-  { id: "52-30", label: "leafiy@192.168.52.30", user: "leafiy", host: "192.168.52.30" },
-  { id: "52-20", label: "leafiy@192.168.52.20", user: "leafiy", host: "192.168.52.20" },
-  { id: "52-5-piggy", label: "piggy@192.168.52.5", user: "piggy", host: "192.168.52.5" },
-  { id: "pc-2223", label: "root@pc:2223", user: "root", host: "pc", port: 2223 },
-  { id: "pc2-2223", label: "root@pc2:2223", user: "root", host: "pc2", port: 2223 },
-  { id: "pc2-2224", label: "root@pc2:2224", user: "root", host: "pc2", port: 2224 }
-];
 
+const config = loadConfig();
+const nodes = config.nodes || [];
 const options = parseArgs(process.argv.slice(2));
-const timezone = options.timezone || process.env.CCUSAGE_TZ || defaultTimezone;
-const ccusagePackage = process.env.CCUSAGE_PACKAGE || "ccusage@20.0.14";
-const since = options.since || process.env.CCUSAGE_SINCE;
-const until = options.until || process.env.CCUSAGE_UNTIL;
-const exportJson = options.exportJson || process.env.CCUSAGE_JSON_EXPORT === "1";
-
-const reports = [
-  { name: "claude", command: ["claude"], periods: ["daily"] },
-  { name: "codex", command: ["codex"], periods: ["daily"] },
-  { name: "opencode", command: ["opencode"], periods: ["daily"] },
-  { name: "pi", command: ["pi"], periods: ["daily"] }
-];
+const timezone = options.timezone || config.timezone || defaultTimezone;
+const ccusagePackage = config.ccusagePackage || "ccusage@20.0.14";
+const since = options.since || config.filters?.since;
+const until = options.until || config.filters?.until;
+const exportJson = options.exportJson || Boolean(config.storage?.exportJson);
+const reports = normalizeReports(config);
 
 main();
 
@@ -155,7 +143,7 @@ function runProbe(node) {
 }
 
 function runCcusageOnNode(node, args, includePiPath) {
-  const command = remoteShell("ccusage", { args, includePiPath });
+  const command = remoteShell("ccusage", { args, includePiPath, piPaths: node.piPaths || [] });
   const result = runShellOnNode(node, command, 180_000);
   if (!result.ok) return result;
 
@@ -184,7 +172,7 @@ detect_pi_paths() {
   add_path "\${PI_CODING_AGENT_DIR:-}"
   add_path "$HOME/.omp/agent"
   add_path "$PWD/.omp/agent"
-  add_path "/root/1/devbox/.omp/agent"
+${(context.piPaths || []).map((candidate) => `  add_path ${quoteShell(candidate)}`).join("\n")}
   printf '%s' "$pi_paths"
 }
 run_ccusage() {
@@ -378,7 +366,7 @@ function rebuildCombined(machineNames) {
 
 function combinePeriod(filePeriod, fieldName, machineNames, combinedDir) {
   const rowsByPeriod = new Map();
-  const agentNames = ["claude", "codex", "opencode", "pi"];
+  const agentNames = reports.map((report) => report.name);
 
   for (const machineName of machineNames) {
     for (const agentName of agentNames) {
@@ -558,6 +546,7 @@ function parseArgs(args) {
     const arg = args[index];
     if (arg === "--offline") parsed.offline = true;
     else if (arg === "--export-json") parsed.exportJson = true;
+    else if (arg === "--config") parsed.config = args[++index];
     else if (arg === "--timezone" || arg === "-z") parsed.timezone = args[++index];
     else if (arg === "--node") parsed.node = args[++index];
     else if (arg === "--since" || arg === "-s") parsed.since = args[++index];
@@ -582,6 +571,7 @@ Options:
   --until, -u <date>     Filter until date, passed to ccusage.
   --offline              Ask ccusage to use cached pricing data.
   --export-json          Also write legacy data/*.json files.
+  --config <file>        JSON config path. Defaults to ./ccusage.config.json.
 
 Node ids:
   ${nodes.map((node) => node.id).join(", ")}

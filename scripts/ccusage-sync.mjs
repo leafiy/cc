@@ -4,24 +4,22 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
+import { loadConfig, normalizeReports } from "./config.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const defaultTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 
 const options = parseArgs(process.argv.slice(2));
-const timezone = options.timezone || process.env.CCUSAGE_TZ || defaultTimezone;
-const machine = safeName(options.machine || process.env.CCUSAGE_MACHINE || os.hostname());
-const ccusagePackage = process.env.CCUSAGE_PACKAGE || "ccusage@20.0.14";
-const since = options.since || process.env.CCUSAGE_SINCE;
-const until = options.until || process.env.CCUSAGE_UNTIL;
-const piPaths = detectPiPaths(options.piPath || process.env.CCUSAGE_PI_PATHS);
-
+const config = loadConfig();
+const timezone = options.timezone || config.timezone || defaultTimezone;
+const machine = safeName(options.machine || config.machine || os.hostname());
+const ccusagePackage = config.ccusagePackage || "ccusage@20.0.14";
+const since = options.since || config.filters?.since;
+const until = options.until || config.filters?.until;
+const piPaths = detectPiPaths(options.piPath || (config.piPaths || []).join(","));
 const reports = [
   { name: "all", command: ["daily"], periods: ["daily", "monthly"] },
-  { name: "claude", command: ["claude"], periods: ["daily", "monthly"] },
-  { name: "codex", command: ["codex"], periods: ["daily", "monthly"] },
-  { name: "opencode", command: ["opencode"], periods: ["daily", "monthly"] },
-  { name: "pi", command: ["pi"], periods: ["daily", "monthly"] }
+  ...normalizeReports(config).map((report) => ({ ...report, periods: ["daily", "monthly"] }))
 ];
 
 main();
@@ -302,6 +300,7 @@ function parseArgs(args) {
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--offline") parsed.offline = true;
+    else if (arg === "--config") parsed.config = args[++index];
     else if (arg === "--timezone" || arg === "-z") parsed.timezone = args[++index];
     else if (arg === "--machine") parsed.machine = args[++index];
     else if (arg === "--pi-path") parsed.piPath = args[++index];
@@ -327,12 +326,10 @@ Options:
   --since, -s <date>     Filter from date, passed to ccusage.
   --until, -u <date>     Filter until date, passed to ccusage.
   --offline              Ask ccusage to use cached pricing data.
+  --config <file>        JSON config path. Defaults to ./ccusage.config.json.
 
-Environment:
-  CCUSAGE_PACKAGE        npm package spec to run. Defaults to ccusage@20.0.14.
-  CCUSAGE_TZ             Default timezone override.
-  CCUSAGE_MACHINE        Default machine name override.
-  CCUSAGE_PI_PATHS       Oh My Pi/pi-agent session root(s), comma-separated.
+Configuration:
+  Copy ccusage.config.example.json to ccusage.config.json and edit it locally.
 `);
 }
 

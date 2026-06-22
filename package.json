@@ -1,15 +1,12 @@
 {
-  "name": "cc-usage-sync",
+  "name": "ccusage-dashboard",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "scripts": {
     "sync": "node scripts/ccusage-sync.mjs",
     "sync:offline": "node scripts/ccusage-sync.mjs --offline",
     "fleet:sync": "node scripts/fleet-sync.mjs",
-    "fleet:install-launchd": "bash scripts/install-fleet-launchd.sh",
     "ui:serve": "node scripts/serve-ui.mjs",
-    "ui:install-launchd": "bash scripts/install-ui-launchd.sh",
     "db:import-json": "node scripts/import-json-to-sqlite.mjs"
   },
   "engines": {

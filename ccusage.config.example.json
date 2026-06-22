@@ -1,0 +1,47 @@
+{
+  "timezone": "Asia/Shanghai",
+  "ccusagePackage": "ccusage@20.0.14",
+  "machine": "local",
+  "storage": {
+    "exportJson": false
+  },
+  "ui": {
+    "host": "0.0.0.0",
+    "port": 8765,
+    "dashboardDefaultPeriod": "month",
+    "clockDefaultPeriod": "week",
+    "defaultTheme": "paper"
+  },
+  "agents": ["claude", "codex", "opencode", "pi"],
+  "piPaths": ["~/.omp/agent"],
+  "nodes": [
+    {
+      "id": "local",
+      "label": "Local machine",
+      "mode": "local"
+    },
+    {
+      "id": "remote-example",
+      "label": "Example remote Linux box",
+      "host": "192.168.1.10",
+      "user": "alice",
+      "port": 22,
+      "enabled": false,
+      "piPaths": ["~/.omp/agent"]
+    }
+  ],
+  "displayNames": {
+    "local": "Local",
+    "remote-example": "Remote"
+  },
+  "weather": {
+    "enabled": false,
+    "provider": "qweather",
+    "apiHost": "",
+    "apiKey": "",
+    "credentialId": "",
+    "location": "",
+    "cityLabel": "",
+    "refreshMinutes": 30
+  }
+}

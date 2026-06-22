@@ -1,1 +1,4 @@
-data/ccusage.sqlite*
+ccusage.config.json
+data/
+Token Usage*.html
+*.sqlite*

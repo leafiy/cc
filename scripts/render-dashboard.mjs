@@ -1,17 +1,11 @@
 import { getCombined, getReport } from "./sqlite-store.mjs";
+import { loadConfig, normalizeReports } from "./config.mjs";
 
-const agents = ["claude", "codex", "opencode", "pi"];
+const config = loadConfig();
+const agents = normalizeReports(config).map((report) => report.name);
 const periods = [["today", "今天"], ["week", "本周"], ["month", "本月"], ["year", "全年"]];
 const variants = [["paper", "札记"], ["ink", "墨"], ["mist", "雾"]];
-const nameMap = {
-  "52-4": "Mac mini M4",
-  "52-30": "MacBook Air M3",
-  "52-5-piggy": "Mac mini M2",
-  "52-20": "Mac mini M1",
-  "pc-2223": "PC",
-  "pc2-2223": "PC2",
-  "pc2-2224": "Devbox"
-};
+const nameMap = config.displayNames || {};
 
 export function renderDashboardHtml({ period = "month", theme = "paper" } = {}) {
   const payload = buildPayload(period, theme);
