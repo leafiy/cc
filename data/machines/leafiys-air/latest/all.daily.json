@@ -835,8 +835,8 @@
     {
       "agent": "all",
       "cacheCreationTokens": 0,
-      "cacheReadTokens": 159360,
-      "inputTokens": 38576,
+      "cacheReadTokens": 845824,
+      "inputTokens": 124973,
       "metadata": {
         "agents": [
           "codex"
@@ -845,28 +845,28 @@
       "modelBreakdowns": [
         {
           "cacheCreationTokens": 0,
-          "cacheReadTokens": 159360,
-          "cost": 0.51031,
-          "inputTokens": 38576,
+          "cacheReadTokens": 845824,
+          "cost": 1.474947,
+          "inputTokens": 124973,
           "modelName": "gpt-5.5",
-          "outputTokens": 7925
+          "outputTokens": 14239
         }
       ],
       "modelsUsed": [
         "gpt-5.5"
       ],
-      "outputTokens": 7925,
+      "outputTokens": 14239,
       "period": "2026-06-23",
-      "totalCost": 0.51031,
-      "totalTokens": 205861
+      "totalCost": 1.474947,
+      "totalTokens": 985036
     }
   ],
   "totals": {
     "cacheCreationTokens": 2488544,
-    "cacheReadTokens": 558579579,
-    "inputTokens": 26962255,
-    "outputTokens": 2907131,
-    "totalCost": 509.0778067,
-    "totalTokens": 590937509
+    "cacheReadTokens": 559266043,
+    "inputTokens": 27048652,
+    "outputTokens": 2913445,
+    "totalCost": 510.0424437,
+    "totalTokens": 591716684
   }
 }

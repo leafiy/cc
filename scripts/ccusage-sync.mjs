@@ -14,6 +14,7 @@ const machine = safeName(options.machine || process.env.CCUSAGE_MACHINE || os.ho
 const ccusagePackage = process.env.CCUSAGE_PACKAGE || "ccusage@20.0.14";
 const since = options.since || process.env.CCUSAGE_SINCE;
 const until = options.until || process.env.CCUSAGE_UNTIL;
+const piPaths = detectPiPaths(options.piPath || process.env.CCUSAGE_PI_PATHS);
 
 const reports = [
   { name: "all", command: ["daily"], periods: ["daily", "monthly"] },
@@ -38,6 +39,7 @@ function main() {
     ccusagePackage,
     generatedAt: new Date().toISOString(),
     filters: { since: since || null, until: until || null },
+    piPaths,
     reports: []
   };
 
@@ -83,6 +85,7 @@ function buildCcusageArgs(report, period) {
   if (options.offline) args.push("--offline");
   if (since) args.push("--since", since);
   if (until) args.push("--until", until);
+  if (report.name === "pi" && piPaths.length > 0) args.push("--pi-path", piPaths.join(","));
   return args;
 }
 
@@ -135,20 +138,23 @@ function rebuildCombined() {
 
 function combinePeriod(filePeriod, fieldName, machineNames, combinedDir) {
   const rowsByPeriod = new Map();
+  const agentNames = ["claude", "codex", "opencode", "pi"];
 
   for (const machineName of machineNames) {
-    const file = path.join(repoRoot, "data", "machines", machineName, "latest", `all.${filePeriod}.json`);
-    if (!existsSync(file)) continue;
+    for (const agentName of agentNames) {
+      const file = path.join(repoRoot, "data", "machines", machineName, "latest", `${agentName}.${filePeriod}.json`);
+      if (!existsSync(file)) continue;
 
-    const data = readJson(file);
-    const rows = Array.isArray(data[fieldName]) ? data[fieldName] : [];
+      const data = readJson(file);
+      const rows = Array.isArray(data[fieldName]) ? data[fieldName] : [];
 
-    for (const row of rows) {
-      const period = row.period || row.date || row.month;
-      if (!period) continue;
-      const target = rowsByPeriod.get(period) || emptyCombinedRow(period);
-      addRow(target, row, machineName);
-      rowsByPeriod.set(period, target);
+      for (const row of rows) {
+        const period = row.period || row.date || row.month;
+        if (!period) continue;
+        const target = rowsByPeriod.get(period) || emptyCombinedRow(period);
+        addRow(target, row, machineName, agentName);
+        rowsByPeriod.set(period, target);
+      }
     }
   }
 
@@ -159,6 +165,7 @@ function combinePeriod(filePeriod, fieldName, machineNames, combinedDir) {
     timezone,
     source: "ccusage",
     machines: machineNames,
+    agents: agentNames,
     [fieldName]: rows,
     totals
   };
@@ -182,10 +189,11 @@ function emptyCombinedRow(period) {
   };
 }
 
-function addRow(target, row, machineName) {
+function addRow(target, row, machineName, agentName) {
   addUnique(target.machines, machineName);
+  addUnique(target.agents, agentName);
   for (const agent of row.metadata?.agents || []) addUnique(target.agents, agent);
-  for (const model of row.modelsUsed || []) addUnique(target.modelsUsed, model);
+  for (const model of getModelsUsed(row)) addUnique(target.modelsUsed, model);
 
   target.inputTokens += number(row.inputTokens);
   target.outputTokens += number(row.outputTokens);
@@ -194,7 +202,7 @@ function addRow(target, row, machineName) {
   target.totalTokens += number(row.totalTokens);
   target.totalCost += number(row.totalCost ?? row.costUSD);
 
-  for (const breakdown of row.modelBreakdowns || []) {
+  for (const breakdown of getModelBreakdowns(row)) {
     const modelName = breakdown.modelName || "unknown";
     let model = target.modelBreakdowns.find((item) => item.modelName === modelName);
     if (!model) {
@@ -296,6 +304,7 @@ function parseArgs(args) {
     if (arg === "--offline") parsed.offline = true;
     else if (arg === "--timezone" || arg === "-z") parsed.timezone = args[++index];
     else if (arg === "--machine") parsed.machine = args[++index];
+    else if (arg === "--pi-path") parsed.piPath = args[++index];
     else if (arg === "--since" || arg === "-s") parsed.since = args[++index];
     else if (arg === "--until" || arg === "-u") parsed.until = args[++index];
     else if (arg === "--help" || arg === "-h") {
@@ -314,6 +323,7 @@ function printHelp() {
 Options:
   --timezone, -z <iana>  Date grouping timezone. Defaults to local system timezone.
   --machine <name>       Override the machine key used under data/machines.
+  --pi-path <paths>      Oh My Pi/pi-agent session root(s), comma-separated.
   --since, -s <date>     Filter from date, passed to ccusage.
   --until, -u <date>     Filter until date, passed to ccusage.
   --offline              Ask ccusage to use cached pricing data.
@@ -322,7 +332,58 @@ Environment:
   CCUSAGE_PACKAGE        npm package spec to run. Defaults to ccusage@20.0.14.
   CCUSAGE_TZ             Default timezone override.
   CCUSAGE_MACHINE        Default machine name override.
+  CCUSAGE_PI_PATHS       Oh My Pi/pi-agent session root(s), comma-separated.
 `);
+}
+
+function detectPiPaths(rawPaths) {
+  const candidates = [];
+  if (rawPaths) candidates.push(...splitPaths(rawPaths));
+  if (process.env.PI_CODING_AGENT_DIR) candidates.push(...splitPaths(process.env.PI_CODING_AGENT_DIR));
+  candidates.push(path.join(os.homedir(), ".omp", "agent"));
+
+  const seen = new Set();
+  return candidates
+    .map((candidate) => path.resolve(expandHome(candidate)))
+    .filter((candidate) => {
+      if (seen.has(candidate) || !existsSync(candidate)) return false;
+      seen.add(candidate);
+      return true;
+    });
+}
+
+function splitPaths(value) {
+  return String(value).split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function expandHome(value) {
+  if (value === "~") return os.homedir();
+  if (value.startsWith("~/")) return path.join(os.homedir(), value.slice(2));
+  return value;
+}
+
+function getModelsUsed(row) {
+  const models = [];
+  for (const model of row.modelsUsed || []) addUnique(models, model);
+  for (const model of Object.keys(row.models || {})) addUnique(models, model);
+  for (const breakdown of row.modelBreakdowns || []) addUnique(models, breakdown.modelName);
+  return models;
+}
+
+function getModelBreakdowns(row) {
+  if (Array.isArray(row.modelBreakdowns) && row.modelBreakdowns.length > 0) return row.modelBreakdowns;
+  if (!row.models || typeof row.models !== "object") return [];
+
+  const entries = Object.entries(row.models);
+  return entries.map(([modelName, model]) => ({
+    modelName,
+    inputTokens: model.inputTokens,
+    outputTokens: model.outputTokens,
+    cacheCreationTokens: model.cacheCreationTokens,
+    cacheReadTokens: model.cacheReadTokens,
+    totalTokens: model.totalTokens,
+    cost: entries.length === 1 ? row.totalCost ?? row.costUSD : 0
+  }));
 }
 
 function readJson(file) {

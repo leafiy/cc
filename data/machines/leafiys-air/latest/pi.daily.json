@@ -1,4 +1,201 @@
 {
-  "daily": [],
-  "totals": null
+  "daily": [
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 0,
+      "date": "2026-06-05",
+      "inputTokens": 33934,
+      "modelsUsed": [
+        "[pi] mimo-v2.5-pro"
+      ],
+      "outputTokens": 45,
+      "totalCost": 0.034069,
+      "totalTokens": 33979
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 102904000,
+      "date": "2026-06-06",
+      "inputTokens": 2813940,
+      "modelsUsed": [
+        "[pi] mimo-v2.5-pro"
+      ],
+      "outputTokens": 315467,
+      "totalCost": 24.341140999999975,
+      "totalTokens": 106033407
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 66063552,
+      "date": "2026-06-07",
+      "inputTokens": 2009694,
+      "modelsUsed": [
+        "[pi] mimo-v2.5-pro"
+      ],
+      "outputTokens": 212116,
+      "totalCost": 15.858752399999993,
+      "totalTokens": 68285362
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 3619904,
+      "date": "2026-06-08",
+      "inputTokens": 247413,
+      "modelsUsed": [
+        "[pi] mimo-v2.5-pro",
+        "[pi] gpt-5.5"
+      ],
+      "outputTokens": 28585,
+      "totalCost": 2.6782133999999997,
+      "totalTokens": 3895902
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 15535616,
+      "date": "2026-06-09",
+      "inputTokens": 988109,
+      "modelsUsed": [
+        "[pi] mimo-v2.5-pro",
+        "[pi] gpt-5.5"
+      ],
+      "outputTokens": 77540,
+      "totalCost": 6.976266600000001,
+      "totalTokens": 16601265
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 298687232,
+      "date": "2026-06-10",
+      "inputTokens": 7550929,
+      "modelsUsed": [
+        "[pi] mimo-v2.5-pro",
+        "[pi] gpt-5.5"
+      ],
+      "outputTokens": 582061,
+      "totalCost": 143.69624400000015,
+      "totalTokens": 306820222
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 18090816,
+      "date": "2026-06-11",
+      "inputTokens": 1038071,
+      "modelsUsed": [
+        "[pi] gpt-5.5",
+        "[pi] mimo-v2.5-pro"
+      ],
+      "outputTokens": 85347,
+      "totalCost": 13.624794,
+      "totalTokens": 19214234
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 10722944,
+      "date": "2026-06-12",
+      "inputTokens": 927096,
+      "modelsUsed": [
+        "[pi] gpt-5.5",
+        "[pi] mimo-v2.5-pro"
+      ],
+      "outputTokens": 50724,
+      "totalCost": 8.250359400000002,
+      "totalTokens": 11700764
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 7059776,
+      "date": "2026-06-13",
+      "inputTokens": 738221,
+      "modelsUsed": [
+        "[pi] gpt-5.5",
+        "[pi] mimo-v2.5-pro"
+      ],
+      "outputTokens": 65623,
+      "totalCost": 6.999703000000002,
+      "totalTokens": 7863620
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 11748480,
+      "date": "2026-06-14",
+      "inputTokens": 670070,
+      "modelsUsed": [
+        "[pi] deepseek-v4-pro",
+        "[pi] mimo-v2.5-pro",
+        "[pi] gpt-5.5"
+      ],
+      "outputTokens": 61342,
+      "totalCost": 7.783721094,
+      "totalTokens": 12479892
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 822016,
+      "date": "2026-06-15",
+      "inputTokens": 92627,
+      "modelsUsed": [
+        "[pi] gpt-5.5"
+      ],
+      "outputTokens": 11253,
+      "totalCost": 1.211733,
+      "totalTokens": 925896
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 982848,
+      "date": "2026-06-16",
+      "inputTokens": 77274,
+      "modelsUsed": [
+        "[pi] mimo-v2.5-pro"
+      ],
+      "outputTokens": 7537,
+      "totalCost": 0.2964546,
+      "totalTokens": 1067659
+    },
+    {
+      "cacheCreationTokens": 348614,
+      "cacheReadTokens": 11316726,
+      "date": "2026-06-20",
+      "inputTokens": 6908,
+      "modelsUsed": [
+        "[pi] claude-opus-4-8"
+      ],
+      "outputTokens": 97344,
+      "totalCost": 10.305340500000003,
+      "totalTokens": 11769592
+    },
+    {
+      "cacheCreationTokens": 428269,
+      "cacheReadTokens": 17863553,
+      "date": "2026-06-22",
+      "inputTokens": 359810,
+      "modelsUsed": [
+        "[pi] claude-opus-4-8",
+        "[pi] gpt-5.5"
+      ],
+      "outputTokens": 209891,
+      "totalCost": 18.738797749999996,
+      "totalTokens": 18861523
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 24679936,
+      "date": "2026-06-23",
+      "inputTokens": 2106640,
+      "modelsUsed": [
+        "[pi] gpt-5.5"
+      ],
+      "outputTokens": 98553,
+      "totalCost": 25.829757999999998,
+      "totalTokens": 26885129
+    }
+  ],
+  "totals": {
+    "cacheCreationTokens": 776883,
+    "cacheReadTokens": 590097399,
+    "inputTokens": 19660736,
+    "outputTokens": 1903428,
+    "totalCost": 286.6253477440001,
+    "totalTokens": 612438446
+  }
 }
