@@ -4,8 +4,9 @@ set -euo pipefail
 repo_dir="${1:-/Volumes/2/code/cc}"
 label="com.leafiy.ccusage-fleet-sync"
 plist="$HOME/Library/LaunchAgents/$label.plist"
+log_dir="$HOME/Library/Logs/ccusage-fleet-sync"
 
-mkdir -p "$HOME/Library/LaunchAgents" "$repo_dir/logs"
+mkdir -p "$HOME/Library/LaunchAgents" "$repo_dir/logs" "$log_dir"
 
 cat > "$plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -21,15 +22,15 @@ cat > "$plist" <<PLIST
     <string>$repo_dir</string>
   </array>
   <key>WorkingDirectory</key>
-  <string>$repo_dir</string>
+  <string>$HOME</string>
   <key>StartInterval</key>
   <integer>900</integer>
   <key>RunAtLoad</key>
   <true/>
   <key>StandardOutPath</key>
-  <string>$repo_dir/logs/fleet-sync.launchd.log</string>
+  <string>$log_dir/fleet-sync.launchd.log</string>
   <key>StandardErrorPath</key>
-  <string>$repo_dir/logs/fleet-sync.launchd.err.log</string>
+  <string>$log_dir/fleet-sync.launchd.err.log</string>
 </dict>
 </plist>
 PLIST
@@ -41,4 +42,4 @@ launchctl kickstart -k "gui/$uid/$label"
 
 echo "installed $label"
 echo "plist: $plist"
-echo "log: $repo_dir/logs/fleet-sync.launchd.log"
+echo "log: $log_dir/fleet-sync.launchd.log"
