@@ -136,7 +136,7 @@ function styles(p) {
     @media (max-width:759px){
       .desktop{display:none}
       .mobile{display:flex}
-      .page{padding:14px 14px 12px;gap:7px}
+      .page{min-height:0;padding:14px 14px 12px;gap:7px}
       .top{padding-bottom:9px}
       h1{font-size:18px}
       .stamp{font-size:9px;line-height:1.45}
@@ -149,7 +149,7 @@ function styles(p) {
       .eyebrow{font-size:8px;letter-spacing:.14em}
       .big,.mid{font-size:20px;margin-top:5px}
       .sub{display:none}
-      .mobile-models{flex:1.24;min-height:0}
+      .mobile-models{flex:none;min-height:0}
       .section-title{padding-bottom:6px}
       .section-title strong,.section-title span{font-size:9px;letter-spacing:.18em}
       .models{padding:5px 0;gap:7px}
