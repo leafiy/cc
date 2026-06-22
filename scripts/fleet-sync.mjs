@@ -86,6 +86,17 @@ function collectNode(node) {
 
   const probe = runProbe(node);
   manifest.probe = probe.ok ? probe.data : null;
+  if (probe.ok) {
+    manifest.hostname = probe.data.hostname || null;
+    manifest.platform = probe.data.platform || null;
+    manifest.arch = probe.data.arch || null;
+    manifest.os = {
+      pretty: probe.data.osPretty || null,
+      kernel: probe.data.kernel || null,
+      kernelRelease: probe.data.kernelRelease || null,
+      arch: probe.data.arch || null
+    };
+  }
   if (!probe.ok) {
     manifest.status = "error";
     manifest.message = probe.message;
@@ -204,6 +215,28 @@ elif command -v bun >/dev/null 2>&1; then
 else
   printf 'runner=\\n'
 fi
+kernel="$(uname -s 2>/dev/null || true)"
+kernel_release="$(uname -r 2>/dev/null || true)"
+arch="$(uname -m 2>/dev/null || true)"
+platform="$(printf '%s' "$kernel" | tr '[:upper:]' '[:lower:]')"
+os_pretty=""
+if command -v sw_vers >/dev/null 2>&1; then
+  os_name="$(sw_vers -productName 2>/dev/null || true)"
+  os_version="$(sw_vers -productVersion 2>/dev/null || true)"
+  os_build="$(sw_vers -buildVersion 2>/dev/null || true)"
+  os_pretty="$(printf '%s %s %s' "$os_name" "$os_version" "$os_build" | sed 's/[[:space:]]*$//')"
+elif [ -r /etc/os-release ]; then
+  . /etc/os-release
+  os_pretty="\${PRETTY_NAME:-\${NAME:-linux}}"
+fi
+if [ -z "$os_pretty" ]; then
+  os_pretty="$(printf '%s %s' "$kernel" "$kernel_release" | sed 's/[[:space:]]*$//')"
+fi
+printf 'platform=%s\\n' "$platform"
+printf 'kernel=%s\\n' "$kernel"
+printf 'kernelRelease=%s\\n' "$kernel_release"
+printf 'arch=%s\\n' "$arch"
+printf 'osPretty=%s\\n' "$os_pretty"
 printf 'piPaths=%s\\n' "$(detect_pi_paths)"
 `;
   }
