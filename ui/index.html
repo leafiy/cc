@@ -160,7 +160,7 @@
     function fmtMoney(n) { return Number(n || 0).toLocaleString("en-US", { maximumFractionDigits:Number(n || 0) < 100 ? 2 : 0 }); }
     function tokenTotal(r) { const total = Number(r.totalTokens || 0); return total > 0 ? total : ["inputTokens","outputTokens","cacheCreationTokens","cacheReadTokens"].reduce((s,k) => s + Number(r[k] || 0), 0); }
     function nodeName(id) { return ({ "52-4":"Mac mini M4", "52-30":"MacBook Air M3", "52-5-piggy":"Mac mini M2", "52-20":"Mac mini M1", "pc-2223":"PC", "pc2-2223":"PC2", "pc2-2224":"Devbox" })[id] || id; }
-    function deviceInfo(m) { const p = m?.probe || {}; const os = m?.os || {}; const pretty = os.pretty || m?.osPretty || p.osPretty || platformName(m?.platform || p.platform || p.kernel); const arch = os.arch || m?.arch || p.arch; const host = m?.hostname || p.hostname || m?.label; return [pretty, arch, host].filter(Boolean).join(" · ") || "unknown os"; }
+    function deviceInfo(m) { const p = m?.probe || {}; const os = m?.os || {}; const pretty = os.pretty || m?.osPretty || p.osPretty || platformName(m?.platform || p.platform || p.kernel); const arch = os.arch || m?.arch || p.arch; return [pretty, arch].filter(Boolean).join(" · ") || "unknown os"; }
     function platformName(v) { v = String(v || "").toLowerCase(); if (v === "darwin") return "macOS"; if (v === "linux") return "Linux"; return v; }
     function fmtUpdated(v) { if (!v) return "--"; const d = new Date(v); return `${String(d.getMonth()+1).padStart(2,"0")} / ${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
     function text(id, value) { document.getElementById(id).textContent = value; }
