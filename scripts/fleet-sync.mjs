@@ -156,6 +156,16 @@ detect_pi_paths() {
   add_path "/root/1/devbox/.omp/agent"
   printf '%s' "$pi_paths"
 }
+run_ccusage() {
+  if command -v npx >/dev/null 2>&1; then
+    npx --yes "$@"
+  elif command -v bun >/dev/null 2>&1; then
+    bun x --silent "$@"
+  else
+    echo "npx or bun not found" >&2
+    exit 127
+  fi
+}
 `;
 
   if (mode === "probe") {
@@ -167,6 +177,13 @@ printf 'node=%s\\n' "$(command -v node 2>/dev/null || true)"
 printf 'npx=%s\\n' "$(command -v npx 2>/dev/null || true)"
 printf 'npm=%s\\n' "$(command -v npm 2>/dev/null || true)"
 printf 'bun=%s\\n' "$(command -v bun 2>/dev/null || true)"
+if command -v npx >/dev/null 2>&1; then
+  printf 'runner=npx\\n'
+elif command -v bun >/dev/null 2>&1; then
+  printf 'runner=bun\\n'
+else
+  printf 'runner=\\n'
+fi
 printf 'piPaths=%s\\n' "$(detect_pi_paths)"
 `;
   }
@@ -174,25 +191,17 @@ printf 'piPaths=%s\\n' "$(detect_pi_paths)"
   const args = [...context.args];
   if (context.includePiPath) {
     return `${setup}
-if ! command -v npx >/dev/null 2>&1; then
-  echo "npx not found" >&2
-  exit 127
-fi
 pi_paths="$(detect_pi_paths)"
 if [ -n "$pi_paths" ]; then
-  npx --yes ${quoteShell(ccusagePackage)} ${args.map(quoteShell).join(" ")} --pi-path "$pi_paths"
+  run_ccusage ${quoteShell(ccusagePackage)} ${args.map(quoteShell).join(" ")} --pi-path "$pi_paths"
 else
-  npx --yes ${quoteShell(ccusagePackage)} ${args.map(quoteShell).join(" ")}
+  run_ccusage ${quoteShell(ccusagePackage)} ${args.map(quoteShell).join(" ")}
 fi
 `;
   }
 
   return `${setup}
-if ! command -v npx >/dev/null 2>&1; then
-  echo "npx not found" >&2
-  exit 127
-fi
-npx --yes ${quoteShell(ccusagePackage)} ${args.map(quoteShell).join(" ")}
+run_ccusage ${quoteShell(ccusagePackage)} ${args.map(quoteShell).join(" ")}
 `;
 }
 
