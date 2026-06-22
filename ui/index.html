@@ -52,8 +52,9 @@
     .legend i { width:22px; height:12px; display:inline-block; background:rgba(var(--heat),var(--a)); }
     .stats { margin-top:40px; border-top:1px solid var(--ink); padding-top:20px; display:flex; justify-content:space-between; gap:20px; }
     .stats .value { margin-top:8px; font-size:28px; font-weight:650; font-variant-numeric:tabular-nums; }
-    .devices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px 18px; margin-top:22px; }
-    .device { display:flex; align-items:center; gap:14px; min-width:0; }
+    .device-section { margin-top:56px; }
+    .devices { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:24px 22px; margin-top:22px; }
+    .device { display:flex; align-items:center; gap:14px; min-width:0; padding-bottom:18px; border-bottom:1px solid var(--hair); }
     .ring { position:relative; width:62px; height:62px; flex:none; }
     .ring svg { transform:rotate(-90deg); }
     .ring b { position:absolute; inset:0; display:grid; place-items:center; font:700 13px/1 "Space Mono",ui-monospace,monospace; }
@@ -61,6 +62,7 @@
     .device-sub,.device-foot { font-size:10px; color:var(--muted); margin-top:3px; }
     footer { margin-top:64px; padding-top:18px; border-top:var(--line) solid var(--ink); display:flex; justify-content:space-between; gap:20px; color:var(--muted); font-size:10px; letter-spacing:.1em; }
     .error { display:none; border:1px solid #b85133; color:#b85133; padding:18px; margin:0 0 28px; }
+    @media (max-width:1040px) { .devices{grid-template-columns:repeat(2,minmax(0,1fr));} }
     @media (max-width:860px) { main{padding:36px 22px 56px;} header,.controls{align-items:flex-start;} h1{font-size:38px;} .stamp{text-align:left;} .hero,.grid{grid-template-columns:1fr;} .hero-cell{border-left:0;border-top:var(--line) solid var(--ink);} .hero-cell:first-child{border-top:0;} .big{font-size:56px;} .devices{grid-template-columns:1fr;} }
   </style>
 </head>
@@ -81,9 +83,9 @@
         <div id="heat"></div>
         <div class="legend mono"><span>低</span><i style="--a:.06"></i><i style="--a:.28"></i><i style="--a:.55"></i><i style="--a:.82"></i><i style="--a:1"></i><span>高</span></div>
         <div class="stats"><div><div class="eyebrow">日均 Token</div><div class="value" id="dailyAvg">--</div></div><div style="text-align:right"><div class="eyebrow">活跃天数</div><div class="value" id="activeDays">--</div></div></div>
-        <div style="margin-top:40px"><div class="section-title mono"><strong>按设备 · By Device</strong><span id="deviceCount">-- 台设备</span></div><div class="devices" id="devices"></div></div>
       </div>
     </section>
+    <section class="device-section"><div class="section-title mono"><strong>按设备 · By Device</strong><span id="deviceCount">-- 台设备</span></div><div class="devices" id="devices"></div></section>
     <footer class="mono"><span id="footRange">--</span><span>DATA · sqlite</span></footer>
   </main>
   <script>
