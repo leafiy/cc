@@ -29,6 +29,15 @@ export function renderDashboardHtml({ period = "month", theme = "paper" } = {}) 
     ${desktop(payload)}
     ${mobile(payload)}
   </main>
+  <script>
+    document.addEventListener("dblclick", async (event) => {
+      if (!event.target.closest(".fullscreen-trigger")) return;
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+      } catch {}
+    });
+  </script>
 </body>
 </html>`;
 }
@@ -216,7 +225,7 @@ function mobile(p) {
 
 function header(p) {
   return `<header class="top">
-    <h1>Token 用量统计</h1>
+    <h1 class="fullscreen-trigger">Token 用量统计</h1>
     <div class="stamp mono">${esc(p.range)}<br>UPDATED · ${esc(p.updated)}</div>
   </header>`;
 }
