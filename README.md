@@ -18,11 +18,15 @@ git push
 The fleet collector runs centrally from `/Volumes/2/code/cc` on
 `leafiy@192.168.52.4`. It SSHes into each node, runs `ccusage` locally on that
 node, and writes all results back to the 52.4 repository working tree.
+To keep the 15-minute job light, each node only runs the four agent-level daily
+reports (`claude`, `codex`, `opencode`, `pi`). Monthly and all-agent views are
+derived on 52.4 from those daily JSON files.
 
 ```sh
 cd /Volumes/2/code/cc
 npm run fleet:sync -- --timezone Asia/Shanghai
 npm run fleet:install-launchd
+npm run ui:install-launchd
 ```
 
 The launchd job runs every 15 minutes and writes logs to:
@@ -30,6 +34,12 @@ The launchd job runs every 15 minutes and writes logs to:
 ```text
 /Volumes/2/code/cc/logs/fleet-sync.launchd.log
 /Volumes/2/code/cc/logs/fleet-sync.launchd.err.log
+```
+
+The live UI is served from 52.4:
+
+```text
+http://192.168.52.4:8765/
 ```
 
 Current fleet nodes:

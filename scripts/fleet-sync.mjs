@@ -24,11 +24,10 @@ const since = options.since || process.env.CCUSAGE_SINCE;
 const until = options.until || process.env.CCUSAGE_UNTIL;
 
 const reports = [
-  { name: "all", command: ["daily"], periods: ["daily", "monthly"] },
-  { name: "claude", command: ["claude"], periods: ["daily", "monthly"] },
-  { name: "codex", command: ["codex"], periods: ["daily", "monthly"] },
-  { name: "opencode", command: ["opencode"], periods: ["daily", "monthly"] },
-  { name: "pi", command: ["pi"], periods: ["daily", "monthly"] }
+  { name: "claude", command: ["claude"], periods: ["daily"] },
+  { name: "codex", command: ["codex"], periods: ["daily"] },
+  { name: "opencode", command: ["opencode"], periods: ["daily"] },
+  { name: "pi", command: ["pi"], periods: ["daily"] }
 ];
 
 main();
@@ -104,7 +103,9 @@ function collectNode(node) {
     }
   }
 
-  const failedReports = manifest.reports.filter((report) => report.status !== "ok");
+  writeDerivedNodeReports(latestDir, manifest);
+
+  const failedReports = manifest.reports.filter((report) => report.status === "error");
   manifest.status = failedReports.length === 0 ? "ok" : "partial";
   manifest.message = failedReports.length === 0 ? null : `${failedReports.length} report(s) failed`;
   writeJson(path.join(latestDir, "manifest.json"), manifest);
@@ -251,6 +252,53 @@ function buildCcusageArgs(report, period) {
   if (since) args.push("--since", since);
   if (until) args.push("--until", until);
   return args;
+}
+
+function writeDerivedNodeReports(latestDir, manifest) {
+  const agentRows = [];
+  for (const report of reports) {
+    const dailyPath = path.join(latestDir, `${report.name}.daily.json`);
+    if (!existsSync(dailyPath)) continue;
+    const payload = readJson(dailyPath);
+    const rows = Array.isArray(payload.daily) ? payload.daily : [];
+    agentRows.push(...rows.map((row) => ({ row, agent: report.name })));
+
+    const monthlyPayload = buildAggregatePayload(rows.map((row) => ({ row, agent: report.name })), "monthly");
+    const monthlyPath = path.join(latestDir, `${report.name}.monthly.json`);
+    writeJson(monthlyPath, monthlyPayload);
+    manifest.reports.push({ key: `${report.name}.monthly`, status: "derived", path: relativePath(monthlyPath) });
+  }
+
+  const allDailyPath = path.join(latestDir, "all.daily.json");
+  const allMonthlyPath = path.join(latestDir, "all.monthly.json");
+  writeJson(allDailyPath, buildAggregatePayload(agentRows, "daily"));
+  writeJson(allMonthlyPath, buildAggregatePayload(agentRows, "monthly"));
+  manifest.reports.push({ key: "all.daily", status: "derived", path: relativePath(allDailyPath) });
+  manifest.reports.push({ key: "all.monthly", status: "derived", path: relativePath(allMonthlyPath) });
+}
+
+function buildAggregatePayload(agentRows, periodType) {
+  const fieldName = periodType === "monthly" ? "monthly" : "daily";
+  const rowsByPeriod = new Map();
+
+  for (const { row, agent } of agentRows) {
+    const sourcePeriod = row.period || row.date || row.month;
+    if (!sourcePeriod) continue;
+    const period = periodType === "monthly" ? sourcePeriod.slice(0, 7) : sourcePeriod;
+    const target = rowsByPeriod.get(period) || emptyCombinedRow(period);
+    addRow(target, row, null, agent);
+    rowsByPeriod.set(period, target);
+  }
+
+  const rows = [...rowsByPeriod.values()].sort((a, b) => a.period.localeCompare(b.period));
+  const totals = rows.reduce((acc, row) => addTotals(acc, row), emptyTotals());
+  return {
+    generatedAt: new Date().toISOString(),
+    timezone,
+    source: "ccusage-fleet-derived",
+    [fieldName]: rows,
+    totals
+  };
 }
 
 function rebuildCombined(machineNames) {

@@ -7,7 +7,9 @@
     "sync": "node scripts/ccusage-sync.mjs",
     "sync:offline": "node scripts/ccusage-sync.mjs --offline",
     "fleet:sync": "node scripts/fleet-sync.mjs",
-    "fleet:install-launchd": "bash scripts/install-fleet-launchd.sh"
+    "fleet:install-launchd": "bash scripts/install-fleet-launchd.sh",
+    "ui:serve": "node scripts/serve-ui.mjs",
+    "ui:install-launchd": "bash scripts/install-ui-launchd.sh"
   },
   "engines": {
     "node": ">=18"

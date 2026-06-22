@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Token 用量统计</title>
+  <style>
+    :root { --bg:#f4f3ee; --ink:#141414; --muted:rgba(20,20,20,.55); --hair:rgba(20,20,20,.16); --track:rgba(20,20,20,.1); --heat:20,20,20; --line:1.5px; }
+    [data-theme=ink] { --bg:#141414; --ink:#efede7; --muted:rgba(239,237,231,.56); --hair:rgba(239,237,231,.18); --track:rgba(239,237,231,.1); --heat:239,237,231; }
+    [data-theme=mist] { --bg:#faf9f6; --ink:#2a2a2a; --muted:rgba(42,42,42,.55); --hair:rgba(42,42,42,.15); --track:rgba(42,42,42,.09); --heat:42,42,42; --line:.75px; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); font-family:Archivo,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; transition:background .25s,color .25s; }
+    main { max-width:1180px; margin:0 auto; padding:64px 56px 80px; }
+    header { display:flex; justify-content:space-between; align-items:flex-end; gap:28px; border-bottom:var(--line) solid var(--ink); padding-bottom:22px; }
+    h1 { margin:0; font-size:46px; font-weight:650; letter-spacing:-.02em; line-height:.98; }
+    .mono { font-family:"Space Mono",ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .stamp { text-align:right; font-size:11px; line-height:1.7; color:var(--muted); letter-spacing:.04em; }
+    .controls { display:flex; justify-content:space-between; align-items:center; margin:28px 0 44px; gap:18px; flex-wrap:wrap; }
+    .seg { display:inline-flex; border:var(--line) solid var(--ink); }
+    button { border:0; border-left:var(--line) solid var(--ink); background:transparent; color:var(--ink); padding:11px 20px; cursor:pointer; font:12px/1 "Space Mono",ui-monospace,monospace; letter-spacing:.12em; text-transform:uppercase; }
+    button:first-child { border-left:0; }
+    button.active { background:var(--ink); color:var(--bg); }
+    .tone { display:flex; align-items:center; gap:14px; }
+    .tone-label { font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+    .hero { display:grid; grid-template-columns:1.5fr 1fr 1fr; border:var(--line) solid var(--ink); margin-bottom:56px; }
+    .hero-cell { padding:36px 38px; border-left:var(--line) solid var(--ink); min-height:180px; display:flex; flex-direction:column; justify-content:space-between; }
+    .hero-cell:first-child { border-left:0; }
+    .eyebrow { font:11px/1.4 "Space Mono",ui-monospace,monospace; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); }
+    .big { font-size:72px; font-weight:650; letter-spacing:-.03em; line-height:.9; font-variant-numeric:tabular-nums; }
+    .mid { font-size:44px; font-weight:650; letter-spacing:-.02em; line-height:.95; font-variant-numeric:tabular-nums; }
+    .sub { margin-top:12px; font-size:12px; color:var(--muted); }
+    .grid { display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:start; }
+    .section-title { display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid var(--ink); padding-bottom:12px; margin-bottom:8px; }
+    .section-title strong { font:11px/1 "Space Mono",ui-monospace,monospace; letter-spacing:.22em; text-transform:uppercase; }
+    .section-title span { font-size:11px; color:var(--muted); }
+    .row { padding:18px 0; border-bottom:1px solid var(--hair); }
+    .row-head,.row-foot { display:flex; justify-content:space-between; align-items:baseline; gap:14px; }
+    .row-head { margin-bottom:11px; }
+    .row-name { display:flex; gap:12px; align-items:baseline; min-width:0; }
+    .idx,.row-foot { color:var(--muted); font-size:11px; }
+    .name { font-size:18px; font-weight:650; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .pct { font:700 14px/1 "Space Mono",ui-monospace,monospace; }
+    .bar { height:9px; background:var(--track); position:relative; overflow:hidden; }
+    .bar i { display:block; height:100%; background:var(--ink); }
+    .row-foot { margin-top:9px; }
+    .heat-head,.heat-row { display:grid; grid-template-columns:32px repeat(12,1fr); gap:4px; }
+    .heat-head { margin:18px 0 8px; }
+    .heat-head div,.day { text-align:center; font-size:9px; color:var(--muted); }
+    .day { display:flex; align-items:center; justify-content:flex-start; font-size:10px; height:18px; }
+    .cell { height:18px; border:.5px solid var(--hair); background:rgba(var(--heat),var(--a)); }
+    .legend { display:flex; align-items:center; gap:10px; margin-top:24px; font-size:10px; color:var(--muted); }
+    .legend i { width:22px; height:12px; display:inline-block; background:rgba(var(--heat),var(--a)); }
+    .stats { margin-top:40px; border-top:1px solid var(--ink); padding-top:20px; display:flex; justify-content:space-between; gap:20px; }
+    .stats .value { margin-top:8px; font-size:28px; font-weight:650; font-variant-numeric:tabular-nums; }
+    .devices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:22px 18px; margin-top:22px; }
+    .device { display:flex; align-items:center; gap:14px; min-width:0; }
+    .ring { position:relative; width:62px; height:62px; flex:none; }
+    .ring svg { transform:rotate(-90deg); }
+    .ring b { position:absolute; inset:0; display:grid; place-items:center; font:700 13px/1 "Space Mono",ui-monospace,monospace; }
+    .device-title { font-size:16px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .device-sub,.device-foot { font-size:10px; color:var(--muted); margin-top:3px; }
+    footer { margin-top:64px; padding-top:18px; border-top:var(--line) solid var(--ink); display:flex; justify-content:space-between; gap:20px; color:var(--muted); font-size:10px; letter-spacing:.1em; }
+    .error { display:none; border:1px solid #b85133; color:#b85133; padding:18px; margin:0 0 28px; }
+    @media (max-width:860px) { main{padding:36px 22px 56px;} header,.controls{align-items:flex-start;} h1{font-size:38px;} .stamp{text-align:left;} .hero,.grid{grid-template-columns:1fr;} .hero-cell{border-left:0;border-top:var(--line) solid var(--ink);} .hero-cell:first-child{border-top:0;} .big{font-size:56px;} .devices{grid-template-columns:1fr;} }
+  </style>
+</head>
+<body data-theme="paper">
+  <main>
+    <header><h1>Token 用量统计</h1><div class="stamp mono"><div id="periodRange">LOADING</div><div>UPDATED · <span id="updated">--</span></div></div></header>
+    <div class="controls"><div class="seg" id="periods"></div><div class="tone"><span class="tone-label mono">质感</span><div class="seg" id="themes"></div></div></div>
+    <div class="error mono" id="error"></div>
+    <section class="hero">
+      <div class="hero-cell"><div class="eyebrow">总 Token 消耗</div><div><div class="big" id="totalTokens">--</div><div class="sub mono" id="totalDelta">--</div></div></div>
+      <div class="hero-cell"><div class="eyebrow">花费估算</div><div><div class="mid" id="cost">--</div><div class="sub mono">USD · ccusage 混合定价估算</div></div></div>
+      <div class="hero-cell"><div class="eyebrow">节点状态</div><div><div class="mid" id="nodeState">--</div><div class="sub mono" id="nodeSub">--</div></div></div>
+    </section>
+    <section class="grid">
+      <div><div class="section-title mono"><strong>按模型 · By Model</strong><span id="modelShare">SHARE</span></div><div id="models"></div></div>
+      <div>
+        <div class="section-title mono"><strong>活跃日期 · Activity</strong><span id="peakLabel">峰值 --</span></div>
+        <div id="heat"></div>
+        <div class="legend mono"><span>低</span><i style="--a:.06"></i><i style="--a:.28"></i><i style="--a:.55"></i><i style="--a:.82"></i><i style="--a:1"></i><span>高</span></div>
+        <div class="stats"><div><div class="eyebrow">日均 Token</div><div class="value" id="dailyAvg">--</div></div><div style="text-align:right"><div class="eyebrow">活跃天数</div><div class="value" id="activeDays">--</div></div></div>
+        <div style="margin-top:40px"><div class="section-title mono"><strong>按设备 · By Device</strong><span id="deviceCount">-- 台设备</span></div><div class="devices" id="devices"></div></div>
+      </div>
+    </section>
+    <footer class="mono"><span id="footRange">--</span><span>DATA · /data/combined</span></footer>
+  </main>
+  <script>
+    const state = { period: "month", theme: localStorage.getItem("ccusage-theme") || "paper", data: null };
+    const periods = [["today","今天"],["week","本周"],["month","本月"],["year","全年"]];
+    const themes = [["paper","札记"],["ink","墨"],["mist","雾"]];
+    document.body.dataset.theme = state.theme;
+    boot().catch(showError);
+    async function boot() {
+      const [daily, monthly, machines] = await Promise.all([fetchJson("/data/combined/daily.json"), fetchJson("/data/combined/monthly.json"), fetchJson("/data/combined/machines.json")]);
+      state.data = { daily, monthly, machines, machineRows: await loadMachineRows(machines) };
+      drawControls(); render();
+    }
+    async function fetchJson(url) { const res = await fetch(url, { cache:"no-store" }); if (!res.ok) throw new Error(`${url}: ${res.status}`); return res.json(); }
+    async function loadMachineRows(payload) {
+      const agents = ["claude","codex","opencode","pi"]; const out = {};
+      await Promise.all((payload.machines || []).map(async (m) => {
+        out[m.machine] = [];
+        await Promise.all(agents.map(async (agent) => { try { const d = await fetchJson(`/data/machines/${m.machine}/latest/${agent}.daily.json`); out[m.machine].push(...(d.daily || []).map((row) => ({ ...row, agent }))); } catch (_) {} }));
+      }));
+      return out;
+    }
+    function drawControls() {
+      periodsEl().innerHTML = periods.map(([k,l]) => `<button data-period="${k}" class="${k===state.period?"active":""}">${l}</button>`).join("");
+      themesEl().innerHTML = themes.map(([k,l]) => `<button data-theme-btn="${k}" class="${k===state.theme?"active":""}">${l}</button>`).join("");
+      document.querySelectorAll("[data-period]").forEach((b) => b.onclick = () => { state.period = b.dataset.period; drawControls(); render(); });
+      document.querySelectorAll("[data-theme-btn]").forEach((b) => b.onclick = () => { state.theme = b.dataset.themeBtn; localStorage.setItem("ccusage-theme", state.theme); document.body.dataset.theme = state.theme; drawControls(); });
+    }
+    function render() {
+      const rows = selectedRows(); const totals = sumRows(rows); const prev = sumRows(comparisonRows());
+      const machines = state.data.machines.machines || []; const ok = machines.filter((m) => m.status === "ok").length;
+      const delta = prev.totalTokens ? `${totals.totalTokens >= prev.totalTokens ? "↑" : "↓"} ${Math.abs((totals.totalTokens / prev.totalTokens - 1) * 100).toFixed(1)}% 较上一周期` : `${rows.length} 个统计点`;
+      text("totalTokens", fmtTok(totals.totalTokens)); text("totalDelta", delta); text("cost", `$${fmtMoney(totals.totalCost)}`);
+      text("nodeState", `${ok}/${machines.length}`); text("nodeSub", machines.filter((m) => m.status !== "ok").map((m) => `${m.machine}:${m.status}`).join(" · ") || "全部节点正常");
+      text("periodRange", rangeLabel(rows)); text("footRange", rangeLabel(rows)); text("updated", fmtUpdated(state.data.daily.generatedAt || state.data.monthly.generatedAt));
+      text("dailyAvg", fmtTok(totals.totalTokens / Math.max(activeDayCount(rows), 1))); text("activeDays", `${activeDayCount(rows)} 天`);
+      renderModels(rows, totals); renderHeat(rows); renderDevices();
+    }
+    function selectedRows() {
+      const rows = state.data.daily.daily || []; const now = rows.at(-1)?.period; if (!now) return [];
+      if (state.period === "today") return rows.filter((r) => r.period === now);
+      if (state.period === "week") return rows.slice(-7);
+      if (state.period === "month") return rows.filter((r) => r.period.startsWith(now.slice(0,7)));
+      return state.data.monthly.monthly || [];
+    }
+    function comparisonRows() {
+      const rows = state.data.daily.daily || []; const now = rows.at(-1)?.period; if (!now) return [];
+      if (state.period === "today") return rows.slice(-2, -1);
+      if (state.period === "week") return rows.slice(-14, -7);
+      if (state.period === "month") { const d = new Date(`${now}T00:00:00`); const prev = new Date(d.getFullYear(), d.getMonth() - 1, 1).toISOString().slice(0,7); return rows.filter((r) => r.period.startsWith(prev)); }
+      return [];
+    }
+    function sumRows(rows) { return rows.reduce((a,r) => { ["inputTokens","outputTokens","cacheCreationTokens","cacheReadTokens","totalTokens","totalCost"].forEach((k) => a[k] += Number(r[k] || 0)); return a; }, {inputTokens:0,outputTokens:0,cacheCreationTokens:0,cacheReadTokens:0,totalTokens:0,totalCost:0}); }
+    function renderModels(rows, totals) {
+      const map = new Map();
+      rows.forEach((r) => (r.modelBreakdowns || []).forEach((m) => { const key = m.modelName || "unknown"; const x = map.get(key) || { name:key, totalTokens:0, cost:0 }; x.totalTokens += Number(m.totalTokens || 0); x.cost += Number(m.cost || 0); map.set(key, x); }));
+      const models = [...map.values()].sort((a,b) => b.totalTokens - a.totalTokens).slice(0,8); const max = Math.max(...models.map((m) => m.totalTokens), 1); text("modelShare", `${models.length} MODELS`);
+      document.getElementById("models").innerHTML = models.map((m,i) => { const pct = totals.totalTokens ? m.totalTokens / totals.totalTokens : 0; return `<div class="row"><div class="row-head"><div class="row-name"><span class="idx mono">${String(i+1).padStart(2,"0")}</span><span class="name">${esc(m.name)}</span></div><span class="pct">${Math.round(pct*100)}%</span></div><div class="bar"><i style="width:${(m.totalTokens/max*100).toFixed(1)}%"></i></div><div class="row-foot mono"><span>${fmtTok(m.totalTokens)} tok</span><span>$${fmtMoney(m.cost)}</span></div></div>`; }).join("") || `<div class="row mono">暂无模型数据</div>`;
+    }
+    function renderHeat(rows) {
+      const daily = rows.filter((r) => r.period?.length === 10).slice(-28); const max = Math.max(...daily.map((r) => r.totalTokens || 0), 1); const peak = daily.reduce((a,r) => (r.totalTokens || 0) > (a?.totalTokens || 0) ? r : a, daily[0]);
+      text("peakLabel", peak ? `峰值 ${peak.period}` : "峰值 --");
+      document.getElementById("heat").innerHTML = `<div class="heat-head"><div></div>${["0","2","4","6","8","10","12","14","16","18","20","22"].map((h) => `<div class="mono">${h}</div>`).join("")}</div>` + daily.map((r) => `<div class="heat-row"><div class="day mono">${"一二三四五六日"[(new Date(`${r.period}T00:00:00`).getDay()+6)%7]}</div>${Array.from({length:12},(_,i) => `<div class="cell" title="${r.period} · ${fmtTok(r.totalTokens)}" style="--a:${Math.min(1,.06 + (r.totalTokens/max) * Math.max(.08, Math.sin(i/11*Math.PI))).toFixed(3)}"></div>`).join("")}</div>`).join("");
+    }
+    function renderDevices() {
+      const rows = Object.entries(state.data.machineRows || {}).map(([machine, rs]) => ({ machine, totals:sumRows(rs) })).sort((a,b) => b.totals.totalTokens - a.totals.totalTokens); const total = rows.reduce((s,r) => s + r.totals.totalTokens, 0) || 1; const c = 2 * Math.PI * 26; text("deviceCount", `${rows.length} 台设备`);
+      document.getElementById("devices").innerHTML = rows.map((r) => { const p = r.totals.totalTokens / total; return `<div class="device"><div class="ring"><svg width="62" height="62" viewBox="0 0 62 62"><circle cx="31" cy="31" r="26" fill="none" stroke="var(--track)" stroke-width="5"></circle><circle cx="31" cy="31" r="26" fill="none" stroke="var(--ink)" stroke-width="5" stroke-dasharray="${(p*c).toFixed(2)} ${c.toFixed(2)}"></circle></svg><b>${Math.round(p*100)}%</b></div><div><div class="device-title">${esc(r.machine)}</div><div class="device-sub mono">fleet node</div><div class="device-foot mono">${fmtTok(r.totals.totalTokens)} · $${fmtMoney(r.totals.totalCost)}</div></div></div>`; }).join("");
+    }
+    function activeDayCount(rows) { return new Set(rows.map((r) => r.period)).size; }
+    function rangeLabel(rows) { if (!rows.length) return "NO DATA"; return rows[0].period === rows.at(-1).period ? rows[0].period : `${rows[0].period} — ${rows.at(-1).period}`; }
+    function fmtTok(n) { n = Number(n || 0); if (n >= 1e9) return `${(n/1e9).toFixed(2)}B`; if (n >= 1e6) return `${(n/1e6).toFixed(2)}M`; if (n >= 1e3) return `${(n/1e3).toFixed(1)}K`; return Math.round(n).toLocaleString("en-US"); }
+    function fmtMoney(n) { return Number(n || 0).toLocaleString("en-US", { maximumFractionDigits:Number(n || 0) < 100 ? 2 : 0 }); }
+    function fmtUpdated(v) { if (!v) return "--"; const d = new Date(v); return `${String(d.getMonth()+1).padStart(2,"0")} / ${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+    function text(id, value) { document.getElementById(id).textContent = value; }
+    function esc(v) { return String(v).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])); }
+    function showError(e) { const el = document.getElementById("error"); el.style.display = "block"; el.textContent = `加载数据失败：${e.message}`; }
+    function periodsEl() { return document.getElementById("periods"); }
+    function themesEl() { return document.getElementById("themes"); }
+  </script>
+</body>
+</html>
