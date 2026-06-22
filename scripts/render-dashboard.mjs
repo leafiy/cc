@@ -55,8 +55,6 @@ function buildPayload(periodName, themeName) {
   const machineRows = loadMachineRows(machines.machines || []);
   const devices = buildDevices(machineRows, machines.machines || []);
   const models = buildModels(rows, totals);
-  const activity = buildActivity(rows);
-  const ok = (machines.machines || []).filter((m) => m.status === "ok").length;
   const activeDays = activeDayCount(rows);
 
   return {
@@ -68,12 +66,9 @@ function buildPayload(periodName, themeName) {
     delta: deltaLabel(totals.totalTokens, prevTotals.totalTokens, rows.length),
     range: rangeLabel(rows),
     updated: fmtUpdated(daily.generatedAt || monthly.generatedAt),
-    nodeState: `${ok}/${machines.machines?.length || 0}`,
-    nodeSub: (machines.machines || []).filter((m) => m.status !== "ok").map((m) => `${nodeName(m.machine)}:${m.status}`).join(" · ") || "全部节点正常",
     dailyAvg: fmtTok(totals.totalTokens / Math.max(activeDays, 1)),
     activeDays: `${activeDays} 天`,
     models,
-    activity,
     devices,
     desktopDevices: compressDevices(devices, 10),
     mobileDevices: compressDevices(devices, 8)
@@ -114,7 +109,7 @@ function styles(p) {
     .big{margin-top:clamp(7px,1vh,12px);font-size:clamp(30px,4vw,52px);font-weight:600;letter-spacing:-.035em;line-height:.9;font-variant-numeric:tabular-nums;white-space:nowrap}
     .mid{margin-top:clamp(7px,1vh,12px);font-size:clamp(26px,3vw,40px);font-weight:600;letter-spacing:-.03em;line-height:.92;font-variant-numeric:tabular-nums;white-space:nowrap}
     .sub{margin-top:clamp(6px,.9vh,10px);font-size:clamp(10px,.82vw,12px);color:${muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,1fr) minmax(210px,.72fr);gap:clamp(22px,3vw,42px);align-items:stretch}
+    .grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(260px,.85fr);gap:clamp(22px,3vw,42px);align-items:stretch}
     .panel{min-height:0;display:flex;flex-direction:column}
     .section-title{flex:none;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid ${ink};padding-bottom:clamp(7px,1vh,12px);gap:14px}
     .section-title strong{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.72vw,11px);letter-spacing:.22em;text-transform:uppercase;white-space:nowrap}
@@ -128,17 +123,6 @@ function styles(p) {
     .pct{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(11px,.95vw,13px);font-weight:700;white-space:nowrap}
     .bar{height:clamp(5px,.72vh,8px);background:${track};position:relative;margin:clamp(4px,.7vh,7px) 0}
     .bar i{position:absolute;inset:0 auto 0 0;background:${ink}}
-    .stats{flex:none;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid ${ink};padding:clamp(8px,1.2vh,16px) 0;gap:20px}
-    .stat-label{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.7vw,11px);letter-spacing:.18em;text-transform:uppercase;color:${muted};white-space:nowrap}
-    .stat-value{margin-top:clamp(3px,.5vh,6px);font-size:clamp(20px,2.25vw,32px);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
-    .activity{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(7px,1vh,13px) 0}
-    .activity-row{display:flex;align-items:center;gap:clamp(8px,.9vw,14px);min-height:0}
-    .activity-label{width:clamp(104px,10.8vw,150px);flex:none;display:flex;align-items:baseline;gap:8px;white-space:nowrap}
-    .activity-day{font-size:clamp(13px,1.1vw,16px);font-weight:600}
-    .activity-date{font-size:clamp(8px,.7vw,11px);color:${muted}}
-    .activity-bar{flex:1;height:clamp(10px,1.45vh,18px);background:${track};position:relative}
-    .activity-bar i{position:absolute;inset:0 auto 0 0;background:${ink}}
-    .activity-share{width:clamp(34px,3vw,46px);flex:none;text-align:right;font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(10px,.92vw,13px);font-weight:700}
     .devices{--device-cols:${dCols};flex:1;min-height:0;display:grid;grid-template-columns:repeat(var(--device-cols),minmax(0,1fr));gap:clamp(7px,1vh,12px) clamp(14px,1.2vw,20px);padding:clamp(7px,1vh,13px) 0}
     .device{min-width:0;display:flex;align-items:center;gap:clamp(9px,1vw,14px);border-bottom:1px solid ${hair};padding-bottom:clamp(5px,.82vh,9px)}
     .ring{position:relative;width:clamp(38px,3.5vw,60px);height:clamp(38px,3.5vw,60px);flex:none}
@@ -166,7 +150,6 @@ function styles(p) {
       .big,.mid{font-size:20px;margin-top:5px}
       .sub{display:none}
       .mobile-models{flex:1.24;min-height:0}
-      .mobile-activity{flex:1.05;min-height:0}
       .section-title{padding-bottom:6px}
       .section-title strong,.section-title span{font-size:9px;letter-spacing:.18em}
       .models{padding:5px 0}
@@ -176,15 +159,6 @@ function styles(p) {
       .name{font-size:12px}
       .pct{font-size:11px;text-align:right}
       .bar{height:8px;margin:0}
-      .stats{padding:6px 0}
-      .stat-label{font-size:8px}
-      .stat-value{font-size:15px}
-      .activity{padding:5px 0}
-      .activity-label{width:118px;gap:6px}
-      .activity-day{font-size:12px}
-      .activity-date{font-size:9px}
-      .activity-bar{height:10px}
-      .activity-share{width:32px;font-size:10px}
       .mobile-devices{flex:none}
       .devices{--device-cols:${mCols};display:grid;grid-template-columns:repeat(var(--device-cols),minmax(0,1fr));gap:5px 8px;padding:7px 0 0}
       .device{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;border:0;padding:0}
@@ -205,7 +179,6 @@ function desktop(p) {
     ${hero(p)}
     <div class="grid">
       ${modelsPanel(p, false)}
-      ${activityPanel(p, false)}
       ${devicesPanel(p, false)}
     </div>
     ${footer(p)}
@@ -218,7 +191,6 @@ function mobile(p) {
     ${mobileTabs(p)}
     ${hero(p)}
     ${modelsPanel(p, true)}
-    ${activityPanel(p, true)}
     ${devicesPanel(p, true)}
   </section>`;
 }
@@ -262,9 +234,9 @@ function hero(p) {
       <div class="sub">USD · ccusage 混合定价估算</div>
     </div>
     <div class="hero-cell">
-      <div class="eyebrow">节点状态</div>
-      <div class="mid">${esc(p.nodeState)}</div>
-      <div class="sub">${esc(p.nodeSub)}</div>
+      <div class="eyebrow">日均 TOKEN</div>
+      <div class="mid">${esc(p.dailyAvg)}</div>
+      <div class="sub">${esc(p.activeDays)}</div>
     </div>
   </section>`;
 }
@@ -287,26 +259,6 @@ function modelsPanel(p, mobileView) {
         <div class="model-foot mono"><span>${esc(fmtTok(m.totalTokens))} tok</span><span>$${esc(fmtMoney(m.cost))}</span></div>
       </article>`;
     }).join("") || `<div class="muted mono">暂无模型数据</div>`}</div>
-  </section>`;
-}
-
-function activityPanel(p, mobileView) {
-  const activity = p.activity.slice(0, 5);
-  const max = Math.max(...activity.map((a) => a.totalTokens), 1);
-  return `<section class="panel ${mobileView ? "mobile-activity" : ""}">
-    <div class="section-title"><strong>活跃时段 · Activity</strong><span>${mobileView ? `日均 ${esc(p.dailyAvg)} · ${esc(p.activeDays)}` : (activity[0] ? `峰值 ${esc(activity[0].period)}` : "峰值 --")}</span></div>
-    ${mobileView ? "" : `<div class="stats">
-      <div><div class="stat-label">日均 Token</div><div class="stat-value">${esc(p.dailyAvg)}</div></div>
-      <div style="text-align:right"><div class="stat-label">活跃天数</div><div class="stat-value">${esc(p.activeDays)}</div></div>
-    </div>`}
-    <div class="activity">${activity.map((a) => {
-      const width = Math.max(2, (a.totalTokens / max) * 100).toFixed(1);
-      return `<div class="activity-row">
-        <div class="activity-label"><span class="activity-day">${esc(dayLabel(a.period))}</span><span class="activity-date mono">${esc(a.period)}</span></div>
-        <div class="activity-bar"><i style="width:${width}%"></i></div>
-        <span class="activity-share">${Math.round((a.totalTokens / max) * 100)}%</span>
-      </div>`;
-    }).join("") || `<div class="muted mono">暂无活跃数据</div>`}</div>
   </section>`;
 }
 
@@ -411,10 +363,6 @@ function buildModels(rows, totals) {
   return [...map.values()].sort((a, b) => b.totalTokens - a.totalTokens).slice(0, 6);
 }
 
-function buildActivity(rows) {
-  return rows.filter((r) => r.period?.length === 10).sort((a, b) => (b.totalTokens || 0) - (a.totalTokens || 0)).slice(0, 5);
-}
-
 function sumRows(rows) {
   return rows.reduce((acc, row) => {
     acc.inputTokens += number(row.inputTokens);
@@ -483,10 +431,6 @@ function platformName(v) {
   if (v === "darwin") return "macOS";
   if (v === "linux") return "Linux";
   return v;
-}
-
-function dayLabel(period) {
-  return `周${"日一二三四五六"[new Date(`${period}T00:00:00`).getDay()]}`;
 }
 
 function sumDeviceTokens(devices) {
