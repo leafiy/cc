@@ -139,7 +139,7 @@
     function sumRows(rows) { return rows.reduce((a,r) => { ["inputTokens","outputTokens","cacheCreationTokens","cacheReadTokens","totalTokens","totalCost"].forEach((k) => a[k] += Number(r[k] || 0)); return a; }, {inputTokens:0,outputTokens:0,cacheCreationTokens:0,cacheReadTokens:0,totalTokens:0,totalCost:0}); }
     function renderModels(rows, totals) {
       const map = new Map();
-      rows.forEach((r) => (r.modelBreakdowns || []).forEach((m) => { const key = m.modelName || "unknown"; const x = map.get(key) || { name:key, totalTokens:0, cost:0 }; x.totalTokens += Number(m.totalTokens || 0); x.cost += Number(m.cost || 0); map.set(key, x); }));
+      rows.forEach((r) => (r.modelBreakdowns || []).forEach((m) => { const key = m.modelName || "unknown"; const x = map.get(key) || { name:key, totalTokens:0, cost:0 }; x.totalTokens += tokenTotal(m); x.cost += Number(m.cost || 0); map.set(key, x); }));
       const models = [...map.values()].sort((a,b) => b.totalTokens - a.totalTokens).slice(0,8); const max = Math.max(...models.map((m) => m.totalTokens), 1); text("modelShare", `${models.length} MODELS`);
       document.getElementById("models").innerHTML = models.map((m,i) => { const pct = totals.totalTokens ? m.totalTokens / totals.totalTokens : 0; return `<div class="row"><div class="row-head"><div class="row-name"><span class="idx mono">${String(i+1).padStart(2,"0")}</span><span class="name">${esc(m.name)}</span></div><span class="pct">${Math.round(pct*100)}%</span></div><div class="bar"><i style="width:${(m.totalTokens/max*100).toFixed(1)}%"></i></div><div class="row-foot mono"><span>${fmtTok(m.totalTokens)} tok</span><span>$${fmtMoney(m.cost)}</span></div></div>`; }).join("") || `<div class="row mono">暂无模型数据</div>`;
     }
@@ -156,6 +156,7 @@
     function rangeLabel(rows) { if (!rows.length) return "NO DATA"; return rows[0].period === rows.at(-1).period ? rows[0].period : `${rows[0].period} — ${rows.at(-1).period}`; }
     function fmtTok(n) { n = Number(n || 0); if (n >= 1e9) return `${(n/1e9).toFixed(2)}B`; if (n >= 1e6) return `${(n/1e6).toFixed(2)}M`; if (n >= 1e3) return `${(n/1e3).toFixed(1)}K`; return Math.round(n).toLocaleString("en-US"); }
     function fmtMoney(n) { return Number(n || 0).toLocaleString("en-US", { maximumFractionDigits:Number(n || 0) < 100 ? 2 : 0 }); }
+    function tokenTotal(r) { const total = Number(r.totalTokens || 0); return total > 0 ? total : ["inputTokens","outputTokens","cacheCreationTokens","cacheReadTokens"].reduce((s,k) => s + Number(r[k] || 0), 0); }
     function fmtUpdated(v) { if (!v) return "--"; const d = new Date(v); return `${String(d.getMonth()+1).padStart(2,"0")} / ${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
     function text(id, value) { document.getElementById(id).textContent = value; }
     function esc(v) { return String(v).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])); }

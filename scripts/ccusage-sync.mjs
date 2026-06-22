@@ -199,7 +199,7 @@ function addRow(target, row, machineName, agentName) {
   target.outputTokens += number(row.outputTokens);
   target.cacheCreationTokens += number(row.cacheCreationTokens);
   target.cacheReadTokens += number(row.cacheReadTokens);
-  target.totalTokens += number(row.totalTokens);
+  target.totalTokens += tokenTotal(row);
   target.totalCost += number(row.totalCost ?? row.costUSD);
 
   for (const breakdown of getModelBreakdowns(row)) {
@@ -221,7 +221,7 @@ function addRow(target, row, machineName, agentName) {
     model.outputTokens += number(breakdown.outputTokens);
     model.cacheCreationTokens += number(breakdown.cacheCreationTokens);
     model.cacheReadTokens += number(breakdown.cacheReadTokens);
-    model.totalTokens += number(breakdown.totalTokens);
+    model.totalTokens += tokenTotal(breakdown);
     model.cost += number(breakdown.cost ?? breakdown.costUSD);
   }
 
@@ -235,7 +235,7 @@ function addTotals(acc, row) {
   acc.outputTokens += number(row.outputTokens);
   acc.cacheCreationTokens += number(row.cacheCreationTokens);
   acc.cacheReadTokens += number(row.cacheReadTokens);
-  acc.totalTokens += number(row.totalTokens);
+  acc.totalTokens += tokenTotal(row);
   acc.totalCost += number(row.totalCost ?? row.costUSD);
   return acc;
 }
@@ -381,7 +381,7 @@ function getModelBreakdowns(row) {
     outputTokens: model.outputTokens,
     cacheCreationTokens: model.cacheCreationTokens,
     cacheReadTokens: model.cacheReadTokens,
-    totalTokens: model.totalTokens,
+    totalTokens: tokenTotal(model),
     cost: entries.length === 1 ? row.totalCost ?? row.costUSD : 0
   }));
 }
@@ -405,6 +405,15 @@ function safeName(value) {
 
 function number(value) {
   return Number.isFinite(Number(value)) ? Number(value) : 0;
+}
+
+function tokenTotal(row) {
+  const total = number(row.totalTokens);
+  if (total > 0) return total;
+  return number(row.inputTokens)
+    + number(row.outputTokens)
+    + number(row.cacheCreationTokens)
+    + number(row.cacheReadTokens);
 }
 
 function addUnique(array, value) {
