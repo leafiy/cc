@@ -102,7 +102,7 @@ function styles(p) {
     .seg a.active{background:${ink};color:${bg}}
     .tone{display:flex;align-items:center;gap:14px}
     .tone-label{font-size:clamp(9px,.7vw,10px);letter-spacing:.18em;text-transform:uppercase;color:${muted}}
-    .hero{display:grid;grid-template-columns:1.45fr 1fr 1fr;border:1.5px solid ${ink};flex:none}
+    .hero{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1.5px solid ${ink};flex:none}
     .hero-cell{min-width:0;padding:clamp(12px,1.65vh,20px) clamp(18px,2.35vw,30px);border-left:1.5px solid ${ink}}
     .hero-cell:first-child{border-left:0}
     .eyebrow{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.72vw,11px);letter-spacing:.22em;text-transform:uppercase;color:${muted};white-space:nowrap}
@@ -114,8 +114,8 @@ function styles(p) {
     .section-title{flex:none;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid ${ink};padding-bottom:clamp(7px,1vh,12px);gap:14px}
     .section-title strong{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.72vw,11px);letter-spacing:.22em;text-transform:uppercase;white-space:nowrap}
     .section-title span{font-size:clamp(9px,.72vw,11px);color:${muted};white-space:nowrap}
-    .models{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(7px,1vh,13px) 0}
-    .model{min-height:0;padding-bottom:clamp(4px,.75vh,8px);border-bottom:1px solid ${hair}}
+    .models{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:clamp(7px,1vh,12px);padding:clamp(7px,1vh,13px) 0}
+    .model{min-height:0;padding-bottom:clamp(5px,.8vh,9px);border-bottom:1px solid ${hair}}
     .model-head,.model-foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
     .model-name{display:flex;gap:clamp(9px,1vw,12px);align-items:baseline;min-width:0}
     .idx,.model-foot{color:${muted};font-size:clamp(8px,.62vw,10px)}
@@ -144,7 +144,7 @@ function styles(p) {
       .mobile-tabs a{flex:1;text-align:center;font-family:"Space Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:9px 0;border-left:1.5px solid ${ink}}
       .mobile-tabs a:first-child{border-left:0}
       .mobile-tabs a.active{background:${ink};color:${bg}}
-      .hero{grid-template-columns:1.3fr 1fr 1fr}
+      .hero{grid-template-columns:repeat(3,minmax(0,1fr))}
       .hero-cell{padding:9px 10px}
       .eyebrow{font-size:8px;letter-spacing:.14em}
       .big,.mid{font-size:20px;margin-top:5px}
@@ -152,13 +152,14 @@ function styles(p) {
       .mobile-models{flex:1.24;min-height:0}
       .section-title{padding-bottom:6px}
       .section-title strong,.section-title span{font-size:9px;letter-spacing:.18em}
-      .models{padding:5px 0}
-      .model{padding:0;border-bottom:0}
-      .model-head{display:grid;grid-template-columns:minmax(58px,72px) minmax(0,1fr) 30px;align-items:center;gap:8px}
-      .model-foot,.idx{display:none}
+      .models{padding:5px 0;gap:7px}
+      .model{padding-bottom:6px;border-bottom:1px solid ${hair}}
+      .model-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+      .model-foot{display:flex}
+      .idx{display:none}
       .name{font-size:12px}
       .pct{font-size:11px;text-align:right}
-      .bar{height:8px;margin:0}
+      .bar{height:7px;margin:3px 0}
       .mobile-devices{flex:none}
       .devices{--device-cols:${mCols};display:grid;grid-template-columns:repeat(var(--device-cols),minmax(0,1fr));gap:5px 8px;padding:7px 0 0}
       .device{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;border:0;padding:0}
