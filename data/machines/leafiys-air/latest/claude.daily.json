@@ -1,0 +1,144 @@
+{
+  "daily": [
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 6637568,
+      "date": "2026-05-27",
+      "inputTokens": 198116,
+      "modelBreakdowns": [
+        {
+          "cacheCreationTokens": 0,
+          "cacheReadTokens": 6637568,
+          "cost": 1.6916825999999996,
+          "inputTokens": 198116,
+          "modelName": "mimo-v2.5-pro",
+          "outputTokens": 55351
+        }
+      ],
+      "modelsUsed": [
+        "mimo-v2.5-pro"
+      ],
+      "outputTokens": 55351,
+      "totalCost": 1.6916825999999996,
+      "totalTokens": 6891035
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 1871168,
+      "date": "2026-06-02",
+      "inputTokens": 53012,
+      "modelBreakdowns": [
+        {
+          "cacheCreationTokens": 0,
+          "cacheReadTokens": 1871168,
+          "cost": 0.4591956,
+          "inputTokens": 53012,
+          "modelName": "mimo-v2.5-pro",
+          "outputTokens": 10650
+        }
+      ],
+      "modelsUsed": [
+        "mimo-v2.5-pro"
+      ],
+      "outputTokens": 10650,
+      "totalCost": 0.4591956,
+      "totalTokens": 1934830
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 1154240,
+      "date": "2026-06-03",
+      "inputTokens": 54535,
+      "modelBreakdowns": [
+        {
+          "cacheCreationTokens": 0,
+          "cacheReadTokens": 1154240,
+          "cost": 0.31262299999999993,
+          "inputTokens": 54535,
+          "modelName": "mimo-v2.5-pro",
+          "outputTokens": 9080
+        }
+      ],
+      "modelsUsed": [
+        "mimo-v2.5-pro"
+      ],
+      "outputTokens": 9080,
+      "totalCost": 0.31262299999999993,
+      "totalTokens": 1217855
+    },
+    {
+      "cacheCreationTokens": 0,
+      "cacheReadTokens": 0,
+      "date": "2026-06-05",
+      "inputTokens": 0,
+      "modelBreakdowns": [
+        {
+          "cacheCreationTokens": 0,
+          "cacheReadTokens": 0,
+          "cost": 0,
+          "inputTokens": 0,
+          "modelName": "mimo-v2.5-pro",
+          "outputTokens": 0
+        }
+      ],
+      "modelsUsed": [
+        "mimo-v2.5-pro"
+      ],
+      "outputTokens": 0,
+      "totalCost": 0,
+      "totalTokens": 0
+    },
+    {
+      "cacheCreationTokens": 306841,
+      "cacheReadTokens": 12158932,
+      "date": "2026-06-19",
+      "inputTokens": 44620,
+      "modelBreakdowns": [
+        {
+          "cacheCreationTokens": 306841,
+          "cacheReadTokens": 12158932,
+          "cost": 12.047175999999995,
+          "inputTokens": 44620,
+          "modelName": "claude-opus-4-8",
+          "outputTokens": 107048
+        }
+      ],
+      "modelsUsed": [
+        "claude-opus-4-8"
+      ],
+      "outputTokens": 107048,
+      "totalCost": 12.047175999999995,
+      "totalTokens": 12617441
+    },
+    {
+      "cacheCreationTokens": 2181703,
+      "cacheReadTokens": 119644967,
+      "date": "2026-06-22",
+      "inputTokens": 188672,
+      "modelBreakdowns": [
+        {
+          "cacheCreationTokens": 2181703,
+          "cacheReadTokens": 119644967,
+          "cost": 103.38874849999999,
+          "inputTokens": 188672,
+          "modelName": "claude-opus-4-8",
+          "outputTokens": 832235
+        }
+      ],
+      "modelsUsed": [
+        "claude-opus-4-8"
+      ],
+      "outputTokens": 832235,
+      "totalCost": 103.38874849999999,
+      "totalTokens": 122847577
+    }
+  ],
+  "totals": {
+    "cacheCreationTokens": 2488544,
+    "cacheReadTokens": 141466875,
+    "inputTokens": 538955,
+    "outputTokens": 1014364,
+    "totalCost": 117.89942569999998,
+    "totalTokens": 145508738
+  }
+}

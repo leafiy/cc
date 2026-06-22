@@ -1,0 +1,13 @@
+{
+  "name": "cc-usage-sync",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "sync": "node scripts/ccusage-sync.mjs",
+    "sync:offline": "node scripts/ccusage-sync.mjs --offline"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "machine": "leafiys-air",
+  "hostname": "leafiys-air",
+  "platform": "darwin",
+  "arch": "arm64",
+  "timezone": "Asia/Shanghai",
+  "ccusagePackage": "ccusage@20.0.14",
+  "generatedAt": "2026-06-22T19:36:41.033Z",
+  "filters": {
+    "since": null,
+    "until": null
+  },
+  "reports": [
+    {
+      "key": "all.daily",
+      "status": "ok",
+      "path": "data/machines/leafiys-air/latest/all.daily.json"
+    },
+    {
+      "key": "all.monthly",
+      "status": "ok",
+      "path": "data/machines/leafiys-air/latest/all.monthly.json"
+    },
+    {
+      "key": "claude.daily",
+      "status": "ok",
+      "path": "data/machines/leafiys-air/latest/claude.daily.json"
+    },
+    {
+      "key": "claude.monthly",
+      "status": "ok",
+      "path": "data/machines/leafiys-air/latest/claude.monthly.json"
+    },
+    {
+      "key": "codex.daily",
+      "status": "ok",
+      "path": "data/machines/leafiys-air/latest/codex.daily.json"
+    },
+    {
+      "key": "codex.monthly",
+      "status": "ok",
+      "path": "data/machines/leafiys-air/latest/codex.monthly.json"
+    },
+    {
+      "key": "opencode.daily",
+      "status": "ok",
+      "path": "data/machines/leafiys-air/latest/opencode.daily.json"
+    },
+    {
+      "key": "opencode.monthly",
+      "status": "ok",
+      "path": "data/machines/leafiys-air/latest/opencode.monthly.json"
+    },
+    {
+      "key": "pi.daily",
+      "status": "ok",
+      "path": "data/machines/leafiys-air/latest/pi.daily.json"
+    },
+    {
+      "key": "pi.monthly",
+      "status": "ok",
+      "path": "data/machines/leafiys-air/latest/pi.monthly.json"
+    }
+  ]
+}
