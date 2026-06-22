@@ -5,68 +5,71 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Token 用量统计</title>
   <style>
-    :root { --bg:#f4f3ee; --ink:#141414; --muted:rgba(20,20,20,.55); --hair:rgba(20,20,20,.16); --track:rgba(20,20,20,.1); --heat:20,20,20; --line:1.5px; }
+    :root { --bg:#f4f3ee; --ink:#141414; --muted:rgba(20,20,20,.55); --hair:rgba(20,20,20,.16); --track:rgba(20,20,20,.1); --heat:20,20,20; --line:1.5px; --scale:1; }
     [data-theme=ink] { --bg:#141414; --ink:#efede7; --muted:rgba(239,237,231,.56); --hair:rgba(239,237,231,.18); --track:rgba(239,237,231,.1); --heat:239,237,231; }
     [data-theme=mist] { --bg:#faf9f6; --ink:#2a2a2a; --muted:rgba(42,42,42,.55); --hair:rgba(42,42,42,.15); --track:rgba(42,42,42,.09); --heat:42,42,42; --line:.75px; }
     * { box-sizing:border-box; }
-    body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); font-family:Archivo,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; transition:background .25s,color .25s; }
-    main { max-width:1180px; margin:0 auto; padding:64px 56px 80px; }
-    header { display:flex; justify-content:space-between; align-items:flex-end; gap:28px; border-bottom:var(--line) solid var(--ink); padding-bottom:22px; }
-    h1 { margin:0; font-size:46px; font-weight:650; letter-spacing:-.02em; line-height:.98; }
+    body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); font-family:Archivo,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; transition:background .25s,color .25s; display:flex; align-items:center; justify-content:center; padding:16px; overflow:auto; }
+    .viewport { width:calc(1280px * var(--scale)); height:calc(720px * var(--scale)); flex:none; }
+    main { width:1280px; height:720px; margin:0; padding:28px 44px 22px; transform:scale(var(--scale)); transform-origin:top left; overflow:hidden; display:flex; flex-direction:column; }
+    header { display:flex; justify-content:space-between; align-items:flex-end; gap:28px; border-bottom:var(--line) solid var(--ink); padding-bottom:12px; }
+    h1 { margin:0; font-size:30px; font-weight:650; letter-spacing:-.02em; line-height:.98; }
     .mono { font-family:"Space Mono",ui-monospace,SFMono-Regular,Menlo,monospace; }
     .stamp { text-align:right; font-size:11px; line-height:1.7; color:var(--muted); letter-spacing:.04em; }
-    .controls { display:flex; justify-content:space-between; align-items:center; margin:28px 0 44px; gap:18px; flex-wrap:wrap; }
+    .controls { display:flex; justify-content:space-between; align-items:center; margin:14px 0 18px; gap:18px; flex-wrap:wrap; }
     .seg { display:inline-flex; border:var(--line) solid var(--ink); }
     button { border:0; border-left:var(--line) solid var(--ink); background:transparent; color:var(--ink); padding:11px 20px; cursor:pointer; font:12px/1 "Space Mono",ui-monospace,monospace; letter-spacing:.12em; text-transform:uppercase; }
     button:first-child { border-left:0; }
     button.active { background:var(--ink); color:var(--bg); }
     .tone { display:flex; align-items:center; gap:14px; }
     .tone-label { font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
-    .hero { display:grid; grid-template-columns:1.5fr 1fr 1fr; border:var(--line) solid var(--ink); margin-bottom:56px; }
-    .hero-cell { padding:36px 38px; border-left:var(--line) solid var(--ink); min-height:180px; display:flex; flex-direction:column; justify-content:space-between; }
+    .hero { display:grid; grid-template-columns:1.5fr 1fr 1fr; border:var(--line) solid var(--ink); margin-bottom:22px; }
+    .hero-cell { padding:16px 30px; border-left:var(--line) solid var(--ink); min-height:112px; display:flex; flex-direction:column; justify-content:space-between; }
     .hero-cell:first-child { border-left:0; }
     .eyebrow { font:11px/1.4 "Space Mono",ui-monospace,monospace; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); }
-    .big { font-size:72px; font-weight:650; letter-spacing:-.03em; line-height:.9; font-variant-numeric:tabular-nums; }
-    .mid { font-size:44px; font-weight:650; letter-spacing:-.02em; line-height:.95; font-variant-numeric:tabular-nums; }
-    .sub { margin-top:12px; font-size:12px; color:var(--muted); }
-    .grid { display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:start; }
+    .big { font-size:42px; font-weight:650; letter-spacing:-.03em; line-height:.9; font-variant-numeric:tabular-nums; }
+    .mid { font-size:30px; font-weight:650; letter-spacing:-.02em; line-height:.95; font-variant-numeric:tabular-nums; }
+    .sub { margin-top:7px; font-size:11px; color:var(--muted); }
+    .grid { display:grid; grid-template-columns:1.15fr 1fr; gap:40px; align-items:start; flex:1; min-height:0; }
     .section-title { display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid var(--ink); padding-bottom:12px; margin-bottom:8px; }
     .section-title strong { font:11px/1 "Space Mono",ui-monospace,monospace; letter-spacing:.22em; text-transform:uppercase; }
     .section-title span { font-size:11px; color:var(--muted); }
-    .row { padding:18px 0; border-bottom:1px solid var(--hair); }
+    .row { padding:8px 0; border-bottom:1px solid var(--hair); }
     .row-head,.row-foot { display:flex; justify-content:space-between; align-items:baseline; gap:14px; }
-    .row-head { margin-bottom:11px; }
+    .row-head { margin-bottom:5px; }
     .row-name { display:flex; gap:12px; align-items:baseline; min-width:0; }
     .idx,.row-foot { color:var(--muted); font-size:11px; }
-    .name { font-size:18px; font-weight:650; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .name { font-size:16px; font-weight:650; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .pct { font:700 14px/1 "Space Mono",ui-monospace,monospace; }
-    .bar { height:9px; background:var(--track); position:relative; overflow:hidden; }
+    .bar { height:7px; background:var(--track); position:relative; overflow:hidden; }
     .bar i { display:block; height:100%; background:var(--ink); }
-    .row-foot { margin-top:9px; }
-    .heat-head,.heat-row { display:grid; grid-template-columns:32px repeat(12,1fr); gap:4px; }
-    .heat-head { margin:18px 0 8px; }
-    .heat-head div,.day { text-align:center; font-size:9px; color:var(--muted); }
-    .day { display:flex; align-items:center; justify-content:flex-start; font-size:10px; height:18px; }
-    .cell { height:18px; border:.5px solid var(--hair); background:rgba(var(--heat),var(--a)); }
-    .legend { display:flex; align-items:center; gap:10px; margin-top:24px; font-size:10px; color:var(--muted); }
+    .row-foot { margin-top:5px; }
+    .activity { border-top:1px solid var(--ink); padding-top:14px; margin-top:14px; }
+    .activity-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+    .activity-label { width:118px; flex:none; font-size:14px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .activity-date { font-size:10px; color:var(--muted); }
+    .activity-bar { flex:1; height:15px; background:var(--track); position:relative; }
+    .activity-bar i { position:absolute; inset:0 auto 0 0; background:var(--ink); }
+    .activity-share { width:40px; flex:none; text-align:right; font:700 12px/1 "Space Mono",ui-monospace,monospace; }
+    .legend { display:flex; align-items:center; gap:10px; margin-top:12px; font-size:10px; color:var(--muted); }
     .legend i { width:22px; height:12px; display:inline-block; background:rgba(var(--heat),var(--a)); }
-    .stats { margin-top:40px; border-top:1px solid var(--ink); padding-top:20px; display:flex; justify-content:space-between; gap:20px; }
-    .stats .value { margin-top:8px; font-size:28px; font-weight:650; font-variant-numeric:tabular-nums; }
-    .device-section { margin-top:56px; }
-    .devices { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:24px 22px; margin-top:22px; }
-    .device { display:flex; align-items:center; gap:14px; min-width:0; padding-bottom:18px; border-bottom:1px solid var(--hair); }
-    .ring { position:relative; width:62px; height:62px; flex:none; }
+    .stats { margin-bottom:12px; display:flex; justify-content:space-between; gap:20px; }
+    .stats .value { margin-top:5px; font-size:24px; font-weight:650; font-variant-numeric:tabular-nums; }
+    .device-section { margin-top:16px; }
+    .devices { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px 22px; margin-top:14px; }
+    .device { display:flex; align-items:center; gap:14px; min-width:0; padding-bottom:12px; border-bottom:1px solid var(--hair); }
+    .ring { position:relative; width:52px; height:52px; flex:none; }
     .ring svg { transform:rotate(-90deg); }
     .ring b { position:absolute; inset:0; display:grid; place-items:center; font:700 13px/1 "Space Mono",ui-monospace,monospace; }
     .device-title { font-size:16px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .device-sub,.device-foot { font-size:10px; color:var(--muted); margin-top:3px; }
-    footer { margin-top:64px; padding-top:18px; border-top:var(--line) solid var(--ink); display:flex; justify-content:space-between; gap:20px; color:var(--muted); font-size:10px; letter-spacing:.1em; }
+    footer { margin-top:16px; padding-top:12px; border-top:var(--line) solid var(--ink); display:flex; justify-content:space-between; gap:20px; color:var(--muted); font-size:10px; letter-spacing:.1em; }
     .error { display:none; border:1px solid #b85133; color:#b85133; padding:18px; margin:0 0 28px; }
-    @media (max-width:1040px) { .devices{grid-template-columns:repeat(2,minmax(0,1fr));} }
-    @media (max-width:860px) { main{padding:36px 22px 56px;} header,.controls{align-items:flex-start;} h1{font-size:38px;} .stamp{text-align:left;} .hero,.grid{grid-template-columns:1fr;} .hero-cell{border-left:0;border-top:var(--line) solid var(--ink);} .hero-cell:first-child{border-top:0;} .big{font-size:56px;} .devices{grid-template-columns:1fr;} }
+    @media (max-width:860px) { body{padding:8px;} }
   </style>
 </head>
 <body data-theme="paper">
+  <div class="viewport">
   <main>
     <header><h1>Token 用量统计</h1><div class="stamp mono"><div id="periodRange">LOADING</div><div>UPDATED · <span id="updated">--</span></div></div></header>
     <div class="controls"><div class="seg" id="periods"></div><div class="tone"><span class="tone-label mono">质感</span><div class="seg" id="themes"></div></div></div>
@@ -80,19 +83,21 @@
       <div><div class="section-title mono"><strong>按模型 · By Model</strong><span id="modelShare">SHARE</span></div><div id="models"></div></div>
       <div>
         <div class="section-title mono"><strong>活跃日期 · Activity</strong><span id="peakLabel">峰值 --</span></div>
+        <div class="stats"><div><div class="eyebrow">日均 Token</div><div class="value" id="dailyAvg">--</div></div><div style="text-align:right"><div class="eyebrow">活跃天数</div><div class="value" id="activeDays">--</div></div></div>
         <div id="heat"></div>
         <div class="legend mono"><span>低</span><i style="--a:.06"></i><i style="--a:.28"></i><i style="--a:.55"></i><i style="--a:.82"></i><i style="--a:1"></i><span>高</span></div>
-        <div class="stats"><div><div class="eyebrow">日均 Token</div><div class="value" id="dailyAvg">--</div></div><div style="text-align:right"><div class="eyebrow">活跃天数</div><div class="value" id="activeDays">--</div></div></div>
       </div>
     </section>
     <section class="device-section"><div class="section-title mono"><strong>按设备 · By Device</strong><span id="deviceCount">-- 台设备</span></div><div class="devices" id="devices"></div></section>
     <footer class="mono"><span id="footRange">--</span><span>DATA · sqlite</span></footer>
   </main>
+  </div>
   <script>
     const state = { period: "month", theme: localStorage.getItem("ccusage-theme") || "paper", data: null };
     const periods = [["today","今天"],["week","本周"],["month","本月"],["year","全年"]];
     const themes = [["paper","札记"],["ink","墨"],["mist","雾"]];
     document.body.dataset.theme = state.theme;
+    fitStage(); addEventListener("resize", fitStage, { passive:true }); addEventListener("orientationchange", fitStage, { passive:true });
     boot().catch(showError);
     async function boot() {
       const [daily, monthly, machines] = await Promise.all([fetchJson("/api/combined/daily"), fetchJson("/api/combined/monthly"), fetchJson("/api/combined/machines")]);
@@ -146,13 +151,13 @@
       document.getElementById("models").innerHTML = models.map((m,i) => { const pct = totals.totalTokens ? m.totalTokens / totals.totalTokens : 0; return `<div class="row"><div class="row-head"><div class="row-name"><span class="idx mono">${String(i+1).padStart(2,"0")}</span><span class="name">${esc(m.name)}</span></div><span class="pct">${Math.round(pct*100)}%</span></div><div class="bar"><i style="width:${(m.totalTokens/max*100).toFixed(1)}%"></i></div><div class="row-foot mono"><span>${fmtTok(m.totalTokens)} tok</span><span>$${fmtMoney(m.cost)}</span></div></div>`; }).join("") || `<div class="row mono">暂无模型数据</div>`;
     }
     function renderHeat(rows) {
-      const daily = rows.filter((r) => r.period?.length === 10).slice(-28); const max = Math.max(...daily.map((r) => r.totalTokens || 0), 1); const peak = daily.reduce((a,r) => (r.totalTokens || 0) > (a?.totalTokens || 0) ? r : a, daily[0]);
+      const daily = rows.filter((r) => r.period?.length === 10); const ranked = [...daily].sort((a,b) => (b.totalTokens || 0) - (a.totalTokens || 0)).slice(0,5); const max = Math.max(...ranked.map((r) => r.totalTokens || 0), 1); const peak = ranked[0];
       text("peakLabel", peak ? `峰值 ${peak.period}` : "峰值 --");
-      document.getElementById("heat").innerHTML = `<div class="heat-head"><div></div>${["0","2","4","6","8","10","12","14","16","18","20","22"].map((h) => `<div class="mono">${h}</div>`).join("")}</div>` + daily.map((r) => `<div class="heat-row"><div class="day mono">${"一二三四五六日"[(new Date(`${r.period}T00:00:00`).getDay()+6)%7]}</div>${Array.from({length:12},(_,i) => `<div class="cell" title="${r.period} · ${fmtTok(r.totalTokens)}" style="--a:${Math.min(1,.06 + (r.totalTokens/max) * Math.max(.08, Math.sin(i/11*Math.PI))).toFixed(3)}"></div>`).join("")}</div>`).join("");
+      document.getElementById("heat").innerHTML = `<div class="activity">${ranked.map((r) => { const pct = Math.max(2, (r.totalTokens || 0) / max * 100); return `<div class="activity-row"><div class="activity-label">${esc(dayLabel(r.period))}<div class="activity-date mono">${esc(r.period)}</div></div><div class="activity-bar"><i style="width:${pct.toFixed(1)}%"></i></div><div class="activity-share">${Math.round(pct)}%</div></div>`; }).join("") || `<div class="row mono">暂无活跃数据</div>`}</div>`;
     }
     function renderDevices() {
-      const meta = new Map((state.data.machines.machines || []).map((m) => [m.machine, m])); const rows = Object.entries(state.data.machineRows || {}).map(([machine, rs]) => ({ machine, totals:sumRows(rs), meta:meta.get(machine) })).sort((a,b) => b.totals.totalTokens - a.totals.totalTokens); const total = rows.reduce((s,r) => s + r.totals.totalTokens, 0) || 1; const c = 2 * Math.PI * 26; text("deviceCount", `${rows.length} 台设备`);
-      document.getElementById("devices").innerHTML = rows.map((r) => { const p = r.totals.totalTokens / total; return `<div class="device"><div class="ring"><svg width="62" height="62" viewBox="0 0 62 62"><circle cx="31" cy="31" r="26" fill="none" stroke="var(--track)" stroke-width="5"></circle><circle cx="31" cy="31" r="26" fill="none" stroke="var(--ink)" stroke-width="5" stroke-dasharray="${(p*c).toFixed(2)} ${c.toFixed(2)}"></circle></svg><b>${Math.round(p*100)}%</b></div><div><div class="device-title">${esc(nodeName(r.machine))}</div><div class="device-sub mono">${esc(deviceInfo(r.meta))}</div><div class="device-foot mono">${fmtTok(r.totals.totalTokens)} · $${fmtMoney(r.totals.totalCost)}</div></div></div>`; }).join("");
+      const meta = new Map((state.data.machines.machines || []).map((m) => [m.machine, m])); const rows = Object.entries(state.data.machineRows || {}).map(([machine, rs]) => ({ machine, totals:sumRows(rs), meta:meta.get(machine) })).sort((a,b) => b.totals.totalTokens - a.totals.totalTokens); const total = rows.reduce((s,r) => s + r.totals.totalTokens, 0) || 1; const c = 2 * Math.PI * 22; text("deviceCount", `${rows.length} 台设备`);
+      document.getElementById("devices").innerHTML = rows.map((r) => { const p = r.totals.totalTokens / total; return `<div class="device"><div class="ring"><svg width="52" height="52" viewBox="0 0 52 52"><circle cx="26" cy="26" r="22" fill="none" stroke="var(--track)" stroke-width="4.5"></circle><circle cx="26" cy="26" r="22" fill="none" stroke="var(--ink)" stroke-width="4.5" stroke-dasharray="${(p*c).toFixed(2)} ${c.toFixed(2)}"></circle></svg><b>${Math.round(p*100)}%</b></div><div><div class="device-title">${esc(nodeName(r.machine))}</div><div class="device-sub mono">${esc(deviceInfo(r.meta))}</div><div class="device-foot mono">${fmtTok(r.totals.totalTokens)} · $${fmtMoney(r.totals.totalCost)}</div></div></div>`; }).join("");
     }
     function activeDayCount(rows) { return new Set(rows.map((r) => r.period)).size; }
     function rangeLabel(rows) { if (!rows.length) return "NO DATA"; return rows[0].period === rows.at(-1).period ? rows[0].period : `${rows[0].period} — ${rows.at(-1).period}`; }
@@ -162,6 +167,8 @@
     function nodeName(id) { return ({ "52-4":"Mac mini M4", "52-30":"MacBook Air M3", "52-5-piggy":"Mac mini M2", "52-20":"Mac mini M1", "pc-2223":"PC", "pc2-2223":"PC2", "pc2-2224":"Devbox" })[id] || id; }
     function deviceInfo(m) { const p = m?.probe || {}; const os = m?.os || {}; const pretty = os.pretty || m?.osPretty || p.osPretty || platformName(m?.platform || p.platform || p.kernel); const arch = os.arch || m?.arch || p.arch; return [pretty, arch].filter(Boolean).join(" · ") || "unknown os"; }
     function platformName(v) { v = String(v || "").toLowerCase(); if (v === "darwin") return "macOS"; if (v === "linux") return "Linux"; return v; }
+    function dayLabel(period) { return `周${"日一二三四五六"[new Date(`${period}T00:00:00`).getDay()]}`; }
+    function fitStage() { const pad = innerWidth <= 860 ? 16 : 32; const scale = Math.min(1, (innerWidth - pad) / 1280, (innerHeight - pad) / 720); document.documentElement.style.setProperty("--scale", Math.max(.25, scale).toFixed(4)); }
     function fmtUpdated(v) { if (!v) return "--"; const d = new Date(v); return `${String(d.getMonth()+1).padStart(2,"0")} / ${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
     function text(id, value) { document.getElementById(id).textContent = value; }
     function esc(v) { return String(v).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])); }
