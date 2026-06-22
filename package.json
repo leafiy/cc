@@ -9,7 +9,8 @@
     "fleet:sync": "node scripts/fleet-sync.mjs",
     "fleet:install-launchd": "bash scripts/install-fleet-launchd.sh",
     "ui:serve": "node scripts/serve-ui.mjs",
-    "ui:install-launchd": "bash scripts/install-ui-launchd.sh"
+    "ui:install-launchd": "bash scripts/install-ui-launchd.sh",
+    "db:import-json": "node scripts/import-json-to-sqlite.mjs"
   },
   "engines": {
     "node": ">=18"

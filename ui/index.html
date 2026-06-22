@@ -84,7 +84,7 @@
         <div style="margin-top:40px"><div class="section-title mono"><strong>按设备 · By Device</strong><span id="deviceCount">-- 台设备</span></div><div class="devices" id="devices"></div></div>
       </div>
     </section>
-    <footer class="mono"><span id="footRange">--</span><span>DATA · /data/combined</span></footer>
+    <footer class="mono"><span id="footRange">--</span><span>DATA · sqlite</span></footer>
   </main>
   <script>
     const state = { period: "month", theme: localStorage.getItem("ccusage-theme") || "paper", data: null };
@@ -93,7 +93,7 @@
     document.body.dataset.theme = state.theme;
     boot().catch(showError);
     async function boot() {
-      const [daily, monthly, machines] = await Promise.all([fetchJson("/data/combined/daily.json"), fetchJson("/data/combined/monthly.json"), fetchJson("/data/combined/machines.json")]);
+      const [daily, monthly, machines] = await Promise.all([fetchJson("/api/combined/daily"), fetchJson("/api/combined/monthly"), fetchJson("/api/combined/machines")]);
       state.data = { daily, monthly, machines, machineRows: await loadMachineRows(machines) };
       drawControls(); render();
     }
@@ -102,7 +102,7 @@
       const agents = ["claude","codex","opencode","pi"]; const out = {};
       await Promise.all((payload.machines || []).map(async (m) => {
         out[m.machine] = [];
-        await Promise.all(agents.map(async (agent) => { try { const d = await fetchJson(`/data/machines/${m.machine}/latest/${agent}.daily.json`); out[m.machine].push(...(d.daily || []).map((row) => ({ ...row, agent }))); } catch (_) {} }));
+        await Promise.all(agents.map(async (agent) => { try { const d = await fetchJson(`/api/machines/${m.machine}/latest/${agent}.daily`); out[m.machine].push(...(d.daily || []).map((row) => ({ ...row, agent }))); } catch (_) {} }));
       }));
       return out;
     }

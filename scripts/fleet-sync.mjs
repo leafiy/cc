@@ -1,9 +1,18 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import os from "node:os";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import {
+  getReport,
+  initDb,
+  listManifests,
+  saveCombined,
+  saveFleetRun,
+  saveKv,
+  saveManifest,
+  saveReport
+} from "./sqlite-store.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const defaultTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -22,6 +31,7 @@ const timezone = options.timezone || process.env.CCUSAGE_TZ || defaultTimezone;
 const ccusagePackage = process.env.CCUSAGE_PACKAGE || "ccusage@20.0.14";
 const since = options.since || process.env.CCUSAGE_SINCE;
 const until = options.until || process.env.CCUSAGE_UNTIL;
+const exportJson = options.exportJson || process.env.CCUSAGE_JSON_EXPORT === "1";
 
 const reports = [
   { name: "claude", command: ["claude"], periods: ["daily"] },
@@ -33,6 +43,7 @@ const reports = [
 main();
 
 function main() {
+  initDb();
   const selectedNodes = filterNodes(nodes);
   const run = {
     generatedAt: new Date().toISOString(),
@@ -47,7 +58,8 @@ function main() {
   }
 
   rebuildCombined(nodes.map((node) => node.id));
-  writeJson(path.join(repoRoot, "data", "fleet", "latest-run.json"), run);
+  saveFleetRun(run);
+  if (exportJson) writeJson(path.join(repoRoot, "data", "fleet", "latest-run.json"), run);
 
   console.log(`fleet sync complete: ${run.nodes.filter((node) => node.status === "ok").length}/${run.nodes.length} nodes ok`);
   for (const node of run.nodes) {
@@ -57,7 +69,8 @@ function main() {
 
 function collectNode(node) {
   const latestDir = path.join(repoRoot, "data", "machines", node.id, "latest");
-  mkdirSync(latestDir, { recursive: true });
+  if (exportJson) mkdirSync(latestDir, { recursive: true });
+  const reportPayloads = new Map();
 
   const manifest = {
     machine: node.id,
@@ -76,7 +89,8 @@ function collectNode(node) {
   if (!probe.ok) {
     manifest.status = "error";
     manifest.message = probe.message;
-    writeJson(path.join(latestDir, "manifest.json"), manifest);
+    saveManifest(manifest);
+    if (exportJson) writeJson(path.join(latestDir, "manifest.json"), manifest);
     return { id: node.id, label: node.label, status: "error", message: probe.message };
   }
 
@@ -88,27 +102,32 @@ function collectNode(node) {
       const result = runCcusageOnNode(node, args, report.name === "pi");
 
       if (result.ok) {
-        writeJson(outputPath, result.data);
-        manifest.reports.push({ key, status: "ok", path: relativePath(outputPath) });
+        saveReport(node.id, report.name, period, result.data, { status: "ok" });
+        reportPayloads.set(key, result.data);
+        if (exportJson) writeJson(outputPath, result.data);
+        manifest.reports.push({ key, status: "ok", storage: "sqlite", path: exportJson ? relativePath(outputPath) : null });
       } else {
         const errorPath = path.join(latestDir, `${key}.error.json`);
-        writeJson(errorPath, {
+        const errorPayload = {
           key,
           args,
           message: result.message,
           generatedAt: new Date().toISOString()
-        });
-        manifest.reports.push({ key, status: "error", path: relativePath(errorPath), message: result.message });
+        };
+        saveReport(node.id, report.name, period, null, { status: "error", message: result.message });
+        if (exportJson) writeJson(errorPath, errorPayload);
+        manifest.reports.push({ key, status: "error", storage: "sqlite", path: exportJson ? relativePath(errorPath) : null, message: result.message });
       }
     }
   }
 
-  writeDerivedNodeReports(latestDir, manifest);
+  writeDerivedNodeReports(node.id, reportPayloads, latestDir, manifest);
 
   const failedReports = manifest.reports.filter((report) => report.status === "error");
   manifest.status = failedReports.length === 0 ? "ok" : "partial";
   manifest.message = failedReports.length === 0 ? null : `${failedReports.length} report(s) failed`;
-  writeJson(path.join(latestDir, "manifest.json"), manifest);
+  saveManifest(manifest);
+  if (exportJson) writeJson(path.join(latestDir, "manifest.json"), manifest);
   return { id: node.id, label: node.label, status: manifest.status, message: manifest.message };
 }
 
@@ -254,27 +273,33 @@ function buildCcusageArgs(report, period) {
   return args;
 }
 
-function writeDerivedNodeReports(latestDir, manifest) {
+function writeDerivedNodeReports(machineName, reportPayloads, latestDir, manifest) {
   const agentRows = [];
   for (const report of reports) {
-    const dailyPath = path.join(latestDir, `${report.name}.daily.json`);
-    if (!existsSync(dailyPath)) continue;
-    const payload = readJson(dailyPath);
+    const payload = reportPayloads.get(`${report.name}.daily`);
+    if (!payload) continue;
     const rows = Array.isArray(payload.daily) ? payload.daily : [];
     agentRows.push(...rows.map((row) => ({ row, agent: report.name })));
 
     const monthlyPayload = buildAggregatePayload(rows.map((row) => ({ row, agent: report.name })), "monthly");
     const monthlyPath = path.join(latestDir, `${report.name}.monthly.json`);
-    writeJson(monthlyPath, monthlyPayload);
-    manifest.reports.push({ key: `${report.name}.monthly`, status: "derived", path: relativePath(monthlyPath) });
+    saveReport(machineName, report.name, "monthly", monthlyPayload, { status: "derived" });
+    if (exportJson) writeJson(monthlyPath, monthlyPayload);
+    manifest.reports.push({ key: `${report.name}.monthly`, status: "derived", storage: "sqlite", path: exportJson ? relativePath(monthlyPath) : null });
   }
 
   const allDailyPath = path.join(latestDir, "all.daily.json");
   const allMonthlyPath = path.join(latestDir, "all.monthly.json");
-  writeJson(allDailyPath, buildAggregatePayload(agentRows, "daily"));
-  writeJson(allMonthlyPath, buildAggregatePayload(agentRows, "monthly"));
-  manifest.reports.push({ key: "all.daily", status: "derived", path: relativePath(allDailyPath) });
-  manifest.reports.push({ key: "all.monthly", status: "derived", path: relativePath(allMonthlyPath) });
+  const allDaily = buildAggregatePayload(agentRows, "daily");
+  const allMonthly = buildAggregatePayload(agentRows, "monthly");
+  saveReport(machineName, "all", "daily", allDaily, { status: "derived" });
+  saveReport(machineName, "all", "monthly", allMonthly, { status: "derived" });
+  if (exportJson) {
+    writeJson(allDailyPath, allDaily);
+    writeJson(allMonthlyPath, allMonthly);
+  }
+  manifest.reports.push({ key: "all.daily", status: "derived", storage: "sqlite", path: exportJson ? relativePath(allDailyPath) : null });
+  manifest.reports.push({ key: "all.monthly", status: "derived", storage: "sqlite", path: exportJson ? relativePath(allMonthlyPath) : null });
 }
 
 function buildAggregatePayload(agentRows, periodType) {
@@ -303,22 +328,19 @@ function buildAggregatePayload(agentRows, periodType) {
 
 function rebuildCombined(machineNames) {
   const combinedDir = path.join(repoRoot, "data", "combined");
-  mkdirSync(combinedDir, { recursive: true });
+  if (exportJson) mkdirSync(combinedDir, { recursive: true });
 
-  const manifests = [];
-  for (const machineName of machineNames) {
-    const manifestPath = path.join(repoRoot, "data", "machines", machineName, "latest", "manifest.json");
-    if (existsSync(manifestPath)) manifests.push(readJson(manifestPath));
-  }
-
-  writeJson(path.join(combinedDir, "machines.json"), {
+  const manifests = listManifests(machineNames);
+  const machinesPayload = {
     generatedAt: new Date().toISOString(),
     machines: manifests.sort((a, b) => a.machine.localeCompare(b.machine))
-  });
+  };
+  saveCombined("machines", machinesPayload);
+  if (exportJson) writeJson(path.join(combinedDir, "machines.json"), machinesPayload);
 
-  combinePeriod("daily", "daily", machineNames, combinedDir);
-  combinePeriod("monthly", "monthly", machineNames, combinedDir);
-  writeSummary(machineNames, combinedDir);
+  const daily = combinePeriod("daily", "daily", machineNames, combinedDir);
+  const monthly = combinePeriod("monthly", "monthly", machineNames, combinedDir);
+  writeSummary(machineNames, combinedDir, { daily, monthly, manifests });
 }
 
 function combinePeriod(filePeriod, fieldName, machineNames, combinedDir) {
@@ -327,9 +349,8 @@ function combinePeriod(filePeriod, fieldName, machineNames, combinedDir) {
 
   for (const machineName of machineNames) {
     for (const agentName of agentNames) {
-      const file = path.join(repoRoot, "data", "machines", machineName, "latest", `${agentName}.${filePeriod}.json`);
-      if (!existsSync(file)) continue;
-      const data = readJson(file);
+      const data = getReport(machineName, agentName, filePeriod);
+      if (!data) continue;
       const rows = Array.isArray(data[fieldName]) ? data[fieldName] : [];
 
       for (const row of rows) {
@@ -344,7 +365,7 @@ function combinePeriod(filePeriod, fieldName, machineNames, combinedDir) {
 
   const rows = [...rowsByPeriod.values()].sort((a, b) => a.period.localeCompare(b.period));
   const totals = rows.reduce((acc, row) => addTotals(acc, row), emptyTotals());
-  writeJson(path.join(combinedDir, `${filePeriod}.json`), {
+  const payload = {
     generatedAt: new Date().toISOString(),
     timezone,
     source: "ccusage-fleet",
@@ -352,7 +373,10 @@ function combinePeriod(filePeriod, fieldName, machineNames, combinedDir) {
     agents: agentNames,
     [fieldName]: rows,
     totals
-  });
+  };
+  saveCombined(filePeriod, payload);
+  if (exportJson) writeJson(path.join(combinedDir, `${filePeriod}.json`), payload);
+  return payload;
 }
 
 function emptyCombinedRow(period) {
@@ -433,16 +457,14 @@ function emptyTotals() {
   };
 }
 
-function writeSummary(machineNames, combinedDir) {
-  const monthly = readJson(path.join(combinedDir, "monthly.json"));
-  const daily = readJson(path.join(combinedDir, "daily.json"));
+function writeSummary(machineNames, combinedDir, { daily, monthly, manifests }) {
   const latestMonth = monthly.monthly.at(-1);
   const latestDay = daily.daily.at(-1);
   const totals = monthly.totals;
+  const manifestByMachine = new Map(manifests.map((manifest) => [manifest.machine, manifest]));
   const statuses = machineNames.map((machineName) => {
-    const manifestPath = path.join(repoRoot, "data", "machines", machineName, "latest", "manifest.json");
-    if (!existsSync(manifestPath)) return `${machineName}: missing`;
-    const manifest = readJson(manifestPath);
+    const manifest = manifestByMachine.get(machineName);
+    if (!manifest) return `${machineName}: missing`;
     return `${machineName}: ${manifest.status || "unknown"}`;
   });
 
@@ -486,7 +508,9 @@ function writeSummary(machineNames, combinedDir) {
     lines.push(`- Models: ${latestDay.modelsUsed.join(", ") || "unknown"}`, "");
   }
 
-  writeFileSync(path.join(combinedDir, "summary.md"), `${lines.join("\n")}\n`);
+  const summary = `${lines.join("\n")}\n`;
+  saveKv("summary.md", summary);
+  if (exportJson) writeFileSync(path.join(combinedDir, "summary.md"), summary);
 }
 
 function filterNodes(allNodes) {
@@ -500,6 +524,7 @@ function parseArgs(args) {
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === "--offline") parsed.offline = true;
+    else if (arg === "--export-json") parsed.exportJson = true;
     else if (arg === "--timezone" || arg === "-z") parsed.timezone = args[++index];
     else if (arg === "--node") parsed.node = args[++index];
     else if (arg === "--since" || arg === "-s") parsed.since = args[++index];
@@ -523,6 +548,7 @@ Options:
   --since, -s <date>     Filter from date, passed to ccusage.
   --until, -u <date>     Filter until date, passed to ccusage.
   --offline              Ask ccusage to use cached pricing data.
+  --export-json          Also write legacy data/*.json files.
 
 Node ids:
   ${nodes.map((node) => node.id).join(", ")}
@@ -550,10 +576,6 @@ function getModelBreakdowns(row) {
     totalTokens: model.totalTokens,
     cost: entries.length === 1 ? row.totalCost ?? row.costUSD : 0
   }));
-}
-
-function readJson(file) {
-  return JSON.parse(readFileSync(file, "utf8"));
 }
 
 function writeJson(file, data) {
