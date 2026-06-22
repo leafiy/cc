@@ -77,15 +77,15 @@ function styles(p) {
   const dCols = p.desktopDevices.length > 7 ? 2 : 1;
   return `
     *{box-sizing:border-box}
-    html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:none;background:${bg};color:${ink}}
-    body{position:fixed;inset:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+    html,body{margin:0;width:100%;min-height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:auto;touch-action:pan-y;background:${bg};color:${ink}}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
     a{color:inherit;text-decoration:none}
     button{font:inherit;color:inherit}
-    .screen{position:fixed;inset:0;width:100vw;height:100vh;background:${bg};color:${ink};overflow:hidden}
+    .screen{width:100vw;min-height:100svh;background:${bg};color:${ink};overflow:visible}
     .mono{font-family:"Space Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
     .muted{color:${muted}}
     .hair{border-color:${hair}}
-    .page{height:100%;display:flex;flex-direction:column;gap:clamp(9px,1.35vh,16px);padding:clamp(16px,2.35vh,34px) clamp(22px,3.4vw,54px) clamp(10px,1.6vh,22px)}
+    .page{min-height:100svh;display:flex;flex-direction:column;gap:clamp(9px,1.35vh,16px);padding:clamp(16px,2.35vh,34px) clamp(22px,3.4vw,54px) clamp(10px,1.6vh,22px)}
     .desktop{display:flex}
     .mobile{display:none}
     .top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.5px solid ${ink};padding-bottom:clamp(8px,1.05vh,13px);flex:none}
