@@ -8,10 +8,24 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$HOM
 
 lock_dir="$repo_dir/.fleet-sync.lock"
 if ! mkdir "$lock_dir" 2>/dev/null; then
+  if [ -f "$lock_dir/pid" ]; then
+    old_pid="$(cat "$lock_dir/pid" 2>/dev/null || true)"
+    if [ -n "$old_pid" ] && ! kill -0 "$old_pid" 2>/dev/null; then
+      rmdir "$lock_dir" 2>/dev/null || true
+      mkdir "$lock_dir" 2>/dev/null || true
+    fi
+  else
+    rmdir "$lock_dir" 2>/dev/null || true
+    mkdir "$lock_dir" 2>/dev/null || true
+  fi
+fi
+lock_pid="$(cat "$lock_dir/pid" 2>/dev/null || true)"
+if [ ! -d "$lock_dir" ] || { [ -n "$lock_pid" ] && [ "$lock_pid" != "$$" ]; }; then
   echo "fleet sync already running; skip"
   exit 0
 fi
-trap 'rmdir "$lock_dir" 2>/dev/null || true' EXIT
+printf '%s\n' "$$" > "$lock_dir/pid"
+trap 'rm -f "$lock_dir/pid"; rmdir "$lock_dir" 2>/dev/null || true' EXIT
 
 node_bin=""
 for candidate in /opt/homebrew/bin/node /usr/local/bin/node /usr/bin/node "$(command -v node 2>/dev/null || true)"; do
