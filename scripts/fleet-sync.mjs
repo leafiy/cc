@@ -9,7 +9,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 const defaultTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 const nodes = [
   { id: "52-4", label: "52.4 local", mode: "local" },
-  { id: "52-30", label: "leafiy@192.168.52.30", user: "leafiy", host: "192.168.52.30" },
+  { id: "52-30", label: "leafiy@192.168.52.30:2222", user: "leafiy", host: "192.168.52.30", port: 2222 },
   { id: "52-20", label: "leafiy@192.168.52.20", user: "leafiy", host: "192.168.52.20" },
   { id: "52-5-piggy", label: "piggy@192.168.52.5", user: "piggy", host: "192.168.52.5" },
   { id: "pc-2223", label: "root@pc:2223", user: "root", host: "pc", port: 2223 },
@@ -47,7 +47,7 @@ function main() {
     run.nodes.push(collectNode(node));
   }
 
-  rebuildCombined(selectedNodes.map((node) => node.id));
+  rebuildCombined(nodes.map((node) => node.id));
   writeJson(path.join(repoRoot, "data", "fleet", "latest-run.json"), run);
 
   console.log(`fleet sync complete: ${run.nodes.filter((node) => node.status === "ok").length}/${run.nodes.length} nodes ok`);

@@ -35,7 +35,7 @@ The launchd job runs every 15 minutes and writes logs to:
 Current fleet nodes:
 
 - `52-4`: local 52.4 machine
-- `52-30`: `leafiy@192.168.52.30`
+- `52-30`: `leafiy@192.168.52.30 -p 2222`
 - `52-20`: `leafiy@192.168.52.20`
 - `52-5-piggy`: `piggy@192.168.52.5`
 - `pc-2223`: `root@pc -p 2223`
