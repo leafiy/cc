@@ -51,7 +51,7 @@ if [ -z "\$node_bin" ]; then
   exit 127
 fi
 
-exec "\$node_bin" "\$repo_dir/scripts/fleet-sync.mjs" --timezone Asia/Shanghai
+"\$node_bin" "\$repo_dir/scripts/fleet-sync.mjs" --timezone Asia/Shanghai
 RUNNER
 chmod +x "$runner"
 
