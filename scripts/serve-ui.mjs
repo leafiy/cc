@@ -3,6 +3,7 @@ import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import process from "node:process";
+import { renderDashboardHtml } from "./render-dashboard.mjs";
 import { getCombined, getKv, getReport, initDb } from "./sqlite-store.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
@@ -20,6 +21,10 @@ initDb();
 
 http.createServer((req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+  if (url.pathname === "/" || url.pathname === "/ui/index.html") {
+    sendDashboard(res, url);
+    return;
+  }
   if (serveData(url.pathname, res)) return;
 
   const routed = url.pathname === "/" ? "/ui/index.html" : decodeURIComponent(url.pathname);
@@ -39,6 +44,18 @@ http.createServer((req, res) => {
 }).listen(port, host, () => {
   console.log(`ccusage UI listening on http://${host}:${port}/`);
 });
+
+function sendDashboard(res, url) {
+  const html = renderDashboardHtml({
+    period: url.searchParams.get("period") || "month",
+    theme: url.searchParams.get("theme") || "paper"
+  });
+  res.writeHead(200, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store"
+  });
+  res.end(html);
+}
 
 function serveData(pathname, res) {
   try {
