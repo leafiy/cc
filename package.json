@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "sync": "node scripts/ccusage-sync.mjs",
-    "sync:offline": "node scripts/ccusage-sync.mjs --offline"
+    "sync:offline": "node scripts/ccusage-sync.mjs --offline",
+    "fleet:sync": "node scripts/fleet-sync.mjs",
+    "fleet:install-launchd": "bash scripts/install-fleet-launchd.sh"
   },
   "engines": {
     "node": ">=18"

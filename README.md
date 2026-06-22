@@ -13,6 +13,41 @@ git commit -m "Sync local ccusage data"
 git push
 ```
 
+## Fleet sync on 52.4
+
+The fleet collector runs centrally from `/Volumes/2/code/cc` on
+`leafiy@192.168.52.4`. It SSHes into each node, runs `ccusage` locally on that
+node, and writes all results back to the 52.4 repository working tree.
+
+```sh
+cd /Volumes/2/code/cc
+npm run fleet:sync -- --timezone Asia/Shanghai
+npm run fleet:install-launchd
+```
+
+The launchd job runs every 15 minutes and writes logs to:
+
+```text
+/Volumes/2/code/cc/logs/fleet-sync.launchd.log
+/Volumes/2/code/cc/logs/fleet-sync.launchd.err.log
+```
+
+Current fleet nodes:
+
+- `52-4`: local 52.4 machine
+- `52-30`: `leafiy@192.168.52.30`
+- `52-20`: `leafiy@192.168.52.20`
+- `52-5-piggy`: `piggy@192.168.52.5`
+- `pc-2223`: `root@pc -p 2223`
+- `pc2-2223`: `root@pc2 -p 2223`
+- `pc2-2224`: `root@pc2 -p 2224`
+
+Run one node manually:
+
+```sh
+npm run fleet:sync -- --node pc2-2224 --timezone Asia/Shanghai
+```
+
 On another machine, clone the same repository and run the same `npm run sync`
 command. Each machine writes to its own directory:
 
