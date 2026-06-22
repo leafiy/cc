@@ -10,7 +10,7 @@
     [data-theme=mist] { --bg:#faf9f6; --ink:#2a2a2a; --muted:rgba(42,42,42,.55); --hair:rgba(42,42,42,.15); --track:rgba(42,42,42,.09); --heat:42,42,42; --line:.75px; }
     * { box-sizing:border-box; }
     html,body { width:100%; height:100%; overflow:hidden; }
-    body { margin:0; min-height:100svh; background:var(--bg); color:var(--ink); font-family:Archivo,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; transition:background .25s,color .25s; display:flex; align-items:center; justify-content:center; padding:0; overflow:hidden; }
+    body { margin:0; min-height:100svh; background:var(--bg); color:var(--ink); font-family:Archivo,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; transition:background .25s,color .25s; padding:0; overflow:hidden; }
     .viewport { width:calc(1280px * var(--scale)); height:calc(720px * var(--scale)); flex:none; }
     main { width:1280px; height:720px; margin:0; padding:28px 44px 22px; transform:scale(var(--scale)); transform-origin:top left; overflow:hidden; display:flex; flex-direction:column; }
     header { display:flex; justify-content:space-between; align-items:flex-end; gap:28px; border-bottom:var(--line) solid var(--ink); padding-bottom:12px; }
@@ -31,40 +31,40 @@
     .big { font-size:42px; font-weight:650; letter-spacing:-.03em; line-height:.9; font-variant-numeric:tabular-nums; }
     .mid { font-size:30px; font-weight:650; letter-spacing:-.02em; line-height:.95; font-variant-numeric:tabular-nums; }
     .sub { margin-top:7px; font-size:11px; color:var(--muted); }
-    .grid { display:grid; grid-template-columns:1.15fr 1fr; gap:40px; align-items:start; flex:1; min-height:0; }
+    .grid { display:grid; grid-template-columns:1.15fr 1fr; gap:40px; align-items:start; flex:none; min-height:0; }
     .section-title { display:flex; justify-content:space-between; align-items:baseline; border-bottom:1px solid var(--ink); padding-bottom:12px; margin-bottom:8px; }
     .section-title strong { font:11px/1 "Space Mono",ui-monospace,monospace; letter-spacing:.22em; text-transform:uppercase; }
     .section-title span { font-size:11px; color:var(--muted); }
-    .row { padding:8px 0; border-bottom:1px solid var(--hair); }
+    .row { padding:4px 0; border-bottom:1px solid var(--hair); }
     .row-head,.row-foot { display:flex; justify-content:space-between; align-items:baseline; gap:14px; }
-    .row-head { margin-bottom:5px; }
+    .row-head { margin-bottom:3px; }
     .row-name { display:flex; gap:12px; align-items:baseline; min-width:0; }
-    .idx,.row-foot { color:var(--muted); font-size:11px; }
-    .name { font-size:16px; font-weight:650; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .pct { font:700 14px/1 "Space Mono",ui-monospace,monospace; }
-    .bar { height:7px; background:var(--track); position:relative; overflow:hidden; }
+    .idx,.row-foot { color:var(--muted); font-size:9px; }
+    .name { font-size:14px; font-weight:650; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .pct { font:700 12px/1 "Space Mono",ui-monospace,monospace; }
+    .bar { height:5px; background:var(--track); position:relative; overflow:hidden; }
     .bar i { display:block; height:100%; background:var(--ink); }
-    .row-foot { margin-top:5px; }
-    .activity { border-top:1px solid var(--ink); padding-top:14px; margin-top:14px; }
-    .activity-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
-    .activity-label { width:118px; flex:none; font-size:14px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .activity-date { font-size:10px; color:var(--muted); }
-    .activity-bar { flex:1; height:15px; background:var(--track); position:relative; }
+    .row-foot { margin-top:3px; }
+    .activity { border-top:1px solid var(--ink); padding-top:10px; margin-top:10px; }
+    .activity-row { display:flex; align-items:center; gap:12px; margin-bottom:7px; }
+    .activity-label { width:104px; flex:none; font-size:12px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .activity-date { font-size:9px; color:var(--muted); }
+    .activity-bar { flex:1; height:12px; background:var(--track); position:relative; }
     .activity-bar i { position:absolute; inset:0 auto 0 0; background:var(--ink); }
     .activity-share { width:40px; flex:none; text-align:right; font:700 12px/1 "Space Mono",ui-monospace,monospace; }
     .legend { display:flex; align-items:center; gap:10px; margin-top:12px; font-size:10px; color:var(--muted); }
     .legend i { width:22px; height:12px; display:inline-block; background:rgba(var(--heat),var(--a)); }
     .stats { margin-bottom:12px; display:flex; justify-content:space-between; gap:20px; }
-    .stats .value { margin-top:5px; font-size:24px; font-weight:650; font-variant-numeric:tabular-nums; }
-    .device-section { margin-top:16px; }
-    .devices { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px 22px; margin-top:14px; }
-    .device { display:flex; align-items:center; gap:14px; min-width:0; padding-bottom:12px; border-bottom:1px solid var(--hair); }
-    .ring { position:relative; width:52px; height:52px; flex:none; }
+    .stats .value { margin-top:5px; font-size:22px; font-weight:650; font-variant-numeric:tabular-nums; }
+    .device-section { margin-top:10px; }
+    .devices { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:10px; margin-top:10px; }
+    .device { display:flex; align-items:center; gap:8px; min-width:0; padding-bottom:8px; border-bottom:1px solid var(--hair); }
+    .ring { position:relative; width:42px; height:42px; flex:none; }
     .ring svg { transform:rotate(-90deg); }
-    .ring b { position:absolute; inset:0; display:grid; place-items:center; font:700 13px/1 "Space Mono",ui-monospace,monospace; }
-    .device-title { font-size:16px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .device-sub,.device-foot { font-size:10px; color:var(--muted); margin-top:3px; }
-    footer { margin-top:16px; padding-top:12px; border-top:var(--line) solid var(--ink); display:flex; justify-content:space-between; gap:20px; color:var(--muted); font-size:10px; letter-spacing:.1em; }
+    .ring b { position:absolute; inset:0; display:grid; place-items:center; font:700 10px/1 "Space Mono",ui-monospace,monospace; }
+    .device-title { font-size:12px; font-weight:650; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .device-sub,.device-foot { font-size:8px; color:var(--muted); margin-top:2px; }
+    footer { margin-top:10px; padding-top:10px; border-top:var(--line) solid var(--ink); display:flex; justify-content:space-between; gap:20px; color:var(--muted); font-size:10px; letter-spacing:.1em; }
     .error { display:none; border:1px solid #b85133; color:#b85133; padding:18px; margin:0 0 28px; }
   </style>
 </head>
@@ -156,8 +156,8 @@
       document.getElementById("heat").innerHTML = `<div class="activity">${ranked.map((r) => { const pct = Math.max(2, (r.totalTokens || 0) / max * 100); return `<div class="activity-row"><div class="activity-label">${esc(dayLabel(r.period))}<div class="activity-date mono">${esc(r.period)}</div></div><div class="activity-bar"><i style="width:${pct.toFixed(1)}%"></i></div><div class="activity-share">${Math.round(pct)}%</div></div>`; }).join("") || `<div class="row mono">暂无活跃数据</div>`}</div>`;
     }
     function renderDevices() {
-      const meta = new Map((state.data.machines.machines || []).map((m) => [m.machine, m])); const rows = Object.entries(state.data.machineRows || {}).map(([machine, rs]) => ({ machine, totals:sumRows(rs), meta:meta.get(machine) })).sort((a,b) => b.totals.totalTokens - a.totals.totalTokens); const total = rows.reduce((s,r) => s + r.totals.totalTokens, 0) || 1; const c = 2 * Math.PI * 22; text("deviceCount", `${rows.length} 台设备`);
-      document.getElementById("devices").innerHTML = rows.map((r) => { const p = r.totals.totalTokens / total; return `<div class="device"><div class="ring"><svg width="52" height="52" viewBox="0 0 52 52"><circle cx="26" cy="26" r="22" fill="none" stroke="var(--track)" stroke-width="4.5"></circle><circle cx="26" cy="26" r="22" fill="none" stroke="var(--ink)" stroke-width="4.5" stroke-dasharray="${(p*c).toFixed(2)} ${c.toFixed(2)}"></circle></svg><b>${Math.round(p*100)}%</b></div><div><div class="device-title">${esc(nodeName(r.machine))}</div><div class="device-sub mono">${esc(deviceInfo(r.meta))}</div><div class="device-foot mono">${fmtTok(r.totals.totalTokens)} · $${fmtMoney(r.totals.totalCost)}</div></div></div>`; }).join("");
+      const meta = new Map((state.data.machines.machines || []).map((m) => [m.machine, m])); const rows = Object.entries(state.data.machineRows || {}).map(([machine, rs]) => ({ machine, totals:sumRows(rs), meta:meta.get(machine) })).sort((a,b) => b.totals.totalTokens - a.totals.totalTokens); const total = rows.reduce((s,r) => s + r.totals.totalTokens, 0) || 1; const c = 2 * Math.PI * 17; text("deviceCount", `${rows.length} 台设备`);
+      document.getElementById("devices").innerHTML = rows.map((r) => { const p = r.totals.totalTokens / total; return `<div class="device"><div class="ring"><svg width="42" height="42" viewBox="0 0 42 42"><circle cx="21" cy="21" r="17" fill="none" stroke="var(--track)" stroke-width="4"></circle><circle cx="21" cy="21" r="17" fill="none" stroke="var(--ink)" stroke-width="4" stroke-dasharray="${(p*c).toFixed(2)} ${c.toFixed(2)}"></circle></svg><b>${Math.round(p*100)}%</b></div><div><div class="device-title">${esc(nodeName(r.machine))}</div><div class="device-sub mono">${esc(deviceInfo(r.meta))}</div><div class="device-foot mono">${fmtTok(r.totals.totalTokens)} · $${fmtMoney(r.totals.totalCost)}</div></div></div>`; }).join("");
     }
     function activeDayCount(rows) { return new Set(rows.map((r) => r.period)).size; }
     function rangeLabel(rows) { if (!rows.length) return "NO DATA"; return rows[0].period === rows.at(-1).period ? rows[0].period : `${rows[0].period} — ${rows.at(-1).period}`; }
@@ -168,7 +168,7 @@
     function deviceInfo(m) { const p = m?.probe || {}; const os = m?.os || {}; const pretty = os.pretty || m?.osPretty || p.osPretty || platformName(m?.platform || p.platform || p.kernel); const arch = os.arch || m?.arch || p.arch; return [pretty, arch].filter(Boolean).join(" · ") || "unknown os"; }
     function platformName(v) { v = String(v || "").toLowerCase(); if (v === "darwin") return "macOS"; if (v === "linux") return "Linux"; return v; }
     function dayLabel(period) { return `周${"日一二三四五六"[new Date(`${period}T00:00:00`).getDay()]}`; }
-    function fitStage() { const scale = Math.min(innerWidth / 1280, innerHeight / 720); document.documentElement.style.setProperty("--scale", Math.max(.1, scale).toFixed(4)); }
+    function fitStage() { const scale = innerWidth / 1280; document.documentElement.style.setProperty("--scale", Math.max(.1, scale).toFixed(4)); }
     function fmtUpdated(v) { if (!v) return "--"; const d = new Date(v); return `${String(d.getMonth()+1).padStart(2,"0")} / ${String(d.getDate()).padStart(2,"0")} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
     function text(id, value) { document.getElementById(id).textContent = value; }
     function esc(v) { return String(v).replace(/[&<>"']/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])); }
