@@ -58,7 +58,7 @@ cat > "$plist" <<PLIST
   <key>StartInterval</key>
   <integer>900</integer>
   <key>RunAtLoad</key>
-  <true/>
+  <false/>
   <key>StandardOutPath</key>
   <string>$log_dir/fleet-sync.launchd.log</string>
   <key>StandardErrorPath</key>
