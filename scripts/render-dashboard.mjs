@@ -1,8 +1,8 @@
 import { getCombined, getReport } from "./sqlite-store.mjs";
 
-const W = 1280;
-const H = 720;
 const agents = ["claude", "codex", "opencode", "pi"];
+const periods = [["today", "今天"], ["week", "本周"], ["month", "本月"], ["year", "全年"]];
+const variants = [["paper", "札记"], ["ink", "墨"], ["mist", "雾"]];
 const nameMap = {
   "52-4": "Mac mini M4",
   "52-30": "MacBook Air M3",
@@ -15,7 +15,6 @@ const nameMap = {
 
 export function renderDashboardHtml({ period = "month", theme = "paper" } = {}) {
   const payload = buildPayload(period, theme);
-  const svg = renderSvg(payload);
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -23,22 +22,23 @@ export function renderDashboardHtml({ period = "month", theme = "paper" } = {}) 
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta http-equiv="refresh" content="60">
   <title>Token 用量统计</title>
-  <style>
-    html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:none;background:${payload.theme.bg};}
-    body{position:fixed;inset:0;}
-    svg{display:block;width:100vw;height:100vh;}
-    a{text-decoration:none;color:inherit}
-  </style>
+  <style>${styles(payload)}</style>
 </head>
-<body>${svg}</body>
+<body>
+  <main class="screen" aria-label="Token 用量统计">
+    ${desktop(payload)}
+    ${mobile(payload)}
+  </main>
+</body>
 </html>`;
 }
 
-function buildPayload(period, themeName) {
+function buildPayload(periodName, themeName) {
   const daily = getCombined("daily") || { daily: [], generatedAt: null };
   const monthly = getCombined("monthly") || { monthly: [], generatedAt: null };
   const machines = getCombined("machines") || { machines: [] };
   const theme = themes()[themeName] || themes().paper;
+  const period = periods.some(([key]) => key === periodName) ? periodName : "month";
   const rows = selectedRows(period, daily.daily || [], monthly.monthly || []);
   const prev = comparisonRows(period, daily.daily || []);
   const totals = sumRows(rows);
@@ -48,154 +48,288 @@ function buildPayload(period, themeName) {
   const models = buildModels(rows, totals);
   const activity = buildActivity(rows);
   const ok = (machines.machines || []).filter((m) => m.status === "ok").length;
+  const activeDays = activeDayCount(rows);
 
   return {
     period,
-    themeName,
+    themeName: themes()[themeName] ? themeName : "paper",
     theme,
     rows,
     totals,
-    delta: prevTotals.totalTokens ? `${totals.totalTokens >= prevTotals.totalTokens ? "↑" : "↓"} ${Math.abs((totals.totalTokens / prevTotals.totalTokens - 1) * 100).toFixed(1)}% 较上一周期` : `${rows.length} 个统计点`,
+    delta: deltaLabel(totals.totalTokens, prevTotals.totalTokens, rows.length),
     range: rangeLabel(rows),
     updated: fmtUpdated(daily.generatedAt || monthly.generatedAt),
     nodeState: `${ok}/${machines.machines?.length || 0}`,
     nodeSub: (machines.machines || []).filter((m) => m.status !== "ok").map((m) => `${nodeName(m.machine)}:${m.status}`).join(" · ") || "全部节点正常",
-    dailyAvg: fmtTok(totals.totalTokens / Math.max(activeDayCount(rows), 1)),
-    activeDays: `${activeDayCount(rows)} 天`,
+    dailyAvg: fmtTok(totals.totalTokens / Math.max(activeDays, 1)),
+    activeDays: `${activeDays} 天`,
     models,
     activity,
-    devices
+    devices,
+    desktopDevices: compressDevices(devices, 10),
+    mobileDevices: compressDevices(devices, 8)
   };
 }
 
-function renderSvg(p) {
-  const { bg, ink, muted, hair, track } = p.theme;
-  const parts = [];
-  const add = (s) => parts.push(s);
-  add(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Token 用量统计">`);
-  add(`<rect width="${W}" height="${H}" fill="${bg}"/>`);
-  add(`<style>
-    .sans{font-family:Archivo,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+function styles(p) {
+  const { bg, ink, muted, hair, track, inkRgb } = p.theme;
+  const mCols = Math.min(4, Math.max(1, p.mobileDevices.length));
+  const dCols = p.desktopDevices.length > 7 ? 2 : 1;
+  return `
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;height:100%;overflow:hidden;overscroll-behavior:none;touch-action:none;background:${bg};color:${ink}}
+    body{position:fixed;inset:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+    a{color:inherit;text-decoration:none}
+    button{font:inherit;color:inherit}
+    .screen{position:fixed;inset:0;width:100vw;height:100vh;background:${bg};color:${ink};overflow:hidden}
     .mono{font-family:"Space Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
-    .muted{fill:${muted}}
-    .ink{fill:${ink}}
-    .line{stroke:${ink};stroke-width:1.5;fill:none}
-    .hair{stroke:${hair};stroke-width:1;fill:none}
-  </style>`);
-
-  line(add, 32, 54, 1248, 54, ink, 1.5);
-  text(add, 32, 37, "Token 用量统计", 28, 650, ink);
-  text(add, 1248, 26, p.range, 10, 400, muted, "end", "mono", ".08em");
-  text(add, 1248, 43, `UPDATED · ${p.updated}`, 10, 400, muted, "end", "mono", ".08em");
-  controls(add, p, ink, bg, muted);
-
-  metricBoxes(add, p, ink, muted, track);
-  mainPanels(add, p, ink, muted, hair, track);
-  devicesPanel(add, p, ink, muted, hair, track);
-  line(add, 32, 692, 1248, 692, ink, 1.5);
-  text(add, 32, 710, p.range, 10, 400, muted, "start", "mono", ".12em");
-  text(add, 1248, 710, "DATA · sqlite", 10, 400, muted, "end", "mono", ".12em");
-  add("</svg>");
-  return parts.join("");
+    .muted{color:${muted}}
+    .hair{border-color:${hair}}
+    .page{height:100%;display:flex;flex-direction:column;gap:clamp(9px,1.35vh,16px);padding:clamp(16px,2.35vh,34px) clamp(22px,3.4vw,54px) clamp(10px,1.6vh,22px)}
+    .desktop{display:flex}
+    .mobile{display:none}
+    .top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.5px solid ${ink};padding-bottom:clamp(8px,1.05vh,13px);flex:none}
+    h1{margin:0;font-size:clamp(24px,2.5vw,34px);font-weight:600;letter-spacing:-.02em;line-height:.95;white-space:nowrap}
+    .stamp{text-align:right;font-size:clamp(9px,.72vw,11px);line-height:1.55;letter-spacing:.06em;color:${muted}}
+    .controls{display:flex;justify-content:space-between;align-items:center;gap:18px;flex:none}
+    .seg{display:inline-flex;border:1.5px solid ${ink}}
+    .seg a{display:block;border-left:1.5px solid ${ink};font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(10px,.82vw,12px);letter-spacing:.12em;text-transform:uppercase;padding:clamp(8px,1.12vh,11px) clamp(14px,1.7vw,20px)}
+    .seg a:first-child{border-left:0}
+    .seg a.active{background:${ink};color:${bg}}
+    .tone{display:flex;align-items:center;gap:14px}
+    .tone-label{font-size:clamp(9px,.7vw,10px);letter-spacing:.18em;text-transform:uppercase;color:${muted}}
+    .hero{display:grid;grid-template-columns:1.45fr 1fr 1fr;border:1.5px solid ${ink};flex:none}
+    .hero-cell{min-width:0;padding:clamp(12px,1.65vh,20px) clamp(18px,2.35vw,30px);border-left:1.5px solid ${ink}}
+    .hero-cell:first-child{border-left:0}
+    .eyebrow{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.72vw,11px);letter-spacing:.22em;text-transform:uppercase;color:${muted};white-space:nowrap}
+    .big{margin-top:clamp(7px,1vh,12px);font-size:clamp(30px,4vw,52px);font-weight:600;letter-spacing:-.035em;line-height:.9;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .mid{margin-top:clamp(7px,1vh,12px);font-size:clamp(26px,3vw,40px);font-weight:600;letter-spacing:-.03em;line-height:.92;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .sub{margin-top:clamp(6px,.9vh,10px);font-size:clamp(10px,.82vw,12px);color:${muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,1fr) minmax(210px,.72fr);gap:clamp(22px,3vw,42px);align-items:stretch}
+    .panel{min-height:0;display:flex;flex-direction:column}
+    .section-title{flex:none;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid ${ink};padding-bottom:clamp(7px,1vh,12px);gap:14px}
+    .section-title strong{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.72vw,11px);letter-spacing:.22em;text-transform:uppercase;white-space:nowrap}
+    .section-title span{font-size:clamp(9px,.72vw,11px);color:${muted};white-space:nowrap}
+    .models{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(7px,1vh,13px) 0}
+    .model{min-height:0;padding-bottom:clamp(4px,.75vh,8px);border-bottom:1px solid ${hair}}
+    .model-head,.model-foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+    .model-name{display:flex;gap:clamp(9px,1vw,12px);align-items:baseline;min-width:0}
+    .idx,.model-foot{color:${muted};font-size:clamp(8px,.62vw,10px)}
+    .name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(13px,1.2vw,18px);font-weight:600;letter-spacing:-.01em}
+    .pct{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(11px,.95vw,13px);font-weight:700;white-space:nowrap}
+    .bar{height:clamp(5px,.72vh,8px);background:${track};position:relative;margin:clamp(4px,.7vh,7px) 0}
+    .bar i{position:absolute;inset:0 auto 0 0;background:${ink}}
+    .stats{flex:none;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1px solid ${ink};padding:clamp(8px,1.2vh,16px) 0;gap:20px}
+    .stat-label{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.7vw,11px);letter-spacing:.18em;text-transform:uppercase;color:${muted};white-space:nowrap}
+    .stat-value{margin-top:clamp(3px,.5vh,6px);font-size:clamp(20px,2.25vw,32px);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .activity{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(7px,1vh,13px) 0}
+    .activity-row{display:flex;align-items:center;gap:clamp(8px,.9vw,14px);min-height:0}
+    .activity-label{width:clamp(104px,10.8vw,150px);flex:none;display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+    .activity-day{font-size:clamp(13px,1.1vw,16px);font-weight:600}
+    .activity-date{font-size:clamp(8px,.7vw,11px);color:${muted}}
+    .activity-bar{flex:1;height:clamp(10px,1.45vh,18px);background:${track};position:relative}
+    .activity-bar i{position:absolute;inset:0 auto 0 0;background:${ink}}
+    .activity-share{width:clamp(34px,3vw,46px);flex:none;text-align:right;font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(10px,.92vw,13px);font-weight:700}
+    .devices{--device-cols:${dCols};flex:1;min-height:0;display:grid;grid-template-columns:repeat(var(--device-cols),minmax(0,1fr));gap:clamp(7px,1vh,12px) clamp(14px,1.2vw,20px);padding:clamp(7px,1vh,13px) 0}
+    .device{min-width:0;display:flex;align-items:center;gap:clamp(9px,1vw,14px);border-bottom:1px solid ${hair};padding-bottom:clamp(5px,.82vh,9px)}
+    .ring{position:relative;width:clamp(38px,3.5vw,60px);height:clamp(38px,3.5vw,60px);flex:none}
+    .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+    .ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.82vw,12px);font-weight:700}
+    .device-title{font-size:clamp(12px,1.05vw,16px);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .device-sub,.device-foot{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(8px,.62vw,10px);color:${muted};white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .device-sub{margin-top:2px}
+    .device-foot{margin-top:clamp(4px,.6vh,8px)}
+    .footer{flex:none;padding-top:clamp(7px,1vh,13px);border-top:1.5px solid ${ink};display:flex;justify-content:space-between;gap:20px;font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.72vw,11px);letter-spacing:.1em;color:${muted};white-space:nowrap}
+    @media (max-width:759px){
+      .desktop{display:none}
+      .mobile{display:flex}
+      .page{padding:14px 14px 12px;gap:7px}
+      .top{padding-bottom:9px}
+      h1{font-size:18px}
+      .stamp{font-size:9px;line-height:1.45}
+      .mobile-tabs{display:flex;border:1.5px solid ${ink};flex:none}
+      .mobile-tabs a{flex:1;text-align:center;font-family:"Space Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:9px 0;border-left:1.5px solid ${ink}}
+      .mobile-tabs a:first-child{border-left:0}
+      .mobile-tabs a.active{background:${ink};color:${bg}}
+      .hero{grid-template-columns:1.3fr 1fr 1fr}
+      .hero-cell{padding:9px 10px}
+      .eyebrow{font-size:8px;letter-spacing:.14em}
+      .big,.mid{font-size:20px;margin-top:5px}
+      .sub{display:none}
+      .mobile-models{flex:1.24;min-height:0}
+      .mobile-activity{flex:1.05;min-height:0}
+      .section-title{padding-bottom:6px}
+      .section-title strong,.section-title span{font-size:9px;letter-spacing:.18em}
+      .models{padding:5px 0}
+      .model{padding:0;border-bottom:0}
+      .model-head{display:grid;grid-template-columns:minmax(58px,72px) minmax(0,1fr) 30px;align-items:center;gap:8px}
+      .model-foot,.idx{display:none}
+      .name{font-size:12px}
+      .pct{font-size:11px;text-align:right}
+      .bar{height:8px;margin:0}
+      .stats{padding:6px 0}
+      .stat-label{font-size:8px}
+      .stat-value{font-size:15px}
+      .activity{padding:5px 0}
+      .activity-label{width:118px;gap:6px}
+      .activity-day{font-size:12px}
+      .activity-date{font-size:9px}
+      .activity-bar{height:10px}
+      .activity-share{width:32px;font-size:10px}
+      .mobile-devices{flex:none}
+      .devices{--device-cols:${mCols};display:grid;grid-template-columns:repeat(var(--device-cols),minmax(0,1fr));gap:5px 8px;padding:7px 0 0}
+      .device{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;border:0;padding:0}
+      .ring{width:${p.mobileDevices.length > 4 ? "34px" : "42px"};height:${p.mobileDevices.length > 4 ? "34px" : "42px"}}
+      .ring b{font-size:9px}
+      .device-title{font-size:9px;max-width:100%}
+      .device-sub{display:none}
+      .device-foot{font-size:7px;margin-top:0;max-width:100%}
+      .footer{display:none}
+    }
+  `;
 }
 
-function controls(add, p, ink, bg, muted) {
-  const periods = [["today", "今天"], ["week", "本周"], ["month", "本月"], ["year", "全年"]];
-  let x = 32;
-  for (const [key, label] of periods) {
-    button(add, x, 70, 58, 30, label, key === p.period, `/?period=${key}&theme=${p.themeName}`, ink, bg);
-    x += 58;
-  }
-  text(add, 1030, 91, "质感", 10, 400, muted, "start", "mono", ".18em");
-  let tx = 1084;
-  for (const [key, label] of [["paper", "札记"], ["ink", "墨"], ["mist", "雾"]]) {
-    button(add, tx, 70, 54, 30, label, key === p.themeName, `/?period=${p.period}&theme=${key}`, ink, bg);
-    tx += 54;
-  }
+function desktop(p) {
+  return `<section class="page desktop">
+    ${header(p)}
+    ${controls(p)}
+    ${hero(p)}
+    <div class="grid">
+      ${modelsPanel(p, false)}
+      ${activityPanel(p, false)}
+      ${devicesPanel(p, false)}
+    </div>
+    ${footer(p)}
+  </section>`;
 }
 
-function metricBoxes(add, p, ink, muted) {
-  const x = 32, y = 116, h = 116, w1 = 520, w2 = 348, w3 = 348;
-  rect(add, x, y, w1 + w2 + w3, h, "transparent", ink, 1.5);
-  line(add, x + w1, y, x + w1, y + h, ink, 1.5);
-  line(add, x + w1 + w2, y, x + w1 + w2, y + h, ink, 1.5);
-  text(add, x + 28, y + 38, "总 TOKEN 消耗", 11, 400, muted, "start", "mono", ".22em");
-  text(add, x + 28, y + 82, fmtTok(p.totals.totalTokens), 44, 650, ink);
-  text(add, x + 28, y + 104, p.delta, 11, 400, muted, "start", "mono");
-  text(add, x + w1 + 28, y + 38, "花费估算", 11, 400, muted, "start", "mono", ".22em");
-  text(add, x + w1 + 28, y + 82, `$${fmtMoney(p.totals.totalCost)}`, 34, 650, ink);
-  text(add, x + w1 + 28, y + 104, "USD · ccusage 混合定价估算", 11, 400, muted, "start", "mono");
-  text(add, x + w1 + w2 + 28, y + 38, "节点状态", 11, 400, muted, "start", "mono", ".22em");
-  text(add, x + w1 + w2 + 28, y + 82, p.nodeState, 34, 650, ink);
-  text(add, x + w1 + w2 + 28, y + 104, p.nodeSub, 11, 400, muted, "start", "mono");
+function mobile(p) {
+  return `<section class="page mobile">
+    ${header(p)}
+    ${mobileTabs(p)}
+    ${hero(p)}
+    ${modelsPanel(p, true)}
+    ${activityPanel(p, true)}
+    ${devicesPanel(p, true)}
+  </section>`;
 }
 
-function mainPanels(add, p, ink, muted, hair, track) {
-  const leftX = 32, top = 270, leftW = 590;
-  const rightX = 670, rightW = 578;
-  sectionHeader(add, leftX, top, leftW, "按模型 · BY MODEL", `${p.models.length} MODELS`, ink, muted);
+function header(p) {
+  return `<header class="top">
+    <h1>Token 用量统计</h1>
+    <div class="stamp mono">${esc(p.range)}<br>UPDATED · ${esc(p.updated)}</div>
+  </header>`;
+}
+
+function controls(p) {
+  return `<nav class="controls" aria-label="控制">
+    <div class="seg">${periodLinks(p)}</div>
+    <div class="tone"><span class="tone-label mono">质感</span><div class="seg">${themeLinks(p)}</div></div>
+  </nav>`;
+}
+
+function mobileTabs(p) {
+  return `<nav class="mobile-tabs" aria-label="周期">${periodLinks(p)}</nav>`;
+}
+
+function periodLinks(p) {
+  return periods.map(([key, label]) => `<a class="${key === p.period ? "active" : ""}" href="/?period=${key}&theme=${p.themeName}">${label}</a>`).join("");
+}
+
+function themeLinks(p) {
+  return variants.map(([key, label]) => `<a class="${key === p.themeName ? "active" : ""}" href="/?period=${p.period}&theme=${key}">${label}</a>`).join("");
+}
+
+function hero(p) {
+  return `<section class="hero">
+    <div class="hero-cell">
+      <div class="eyebrow">总 TOKEN 消耗</div>
+      <div class="big">${esc(fmtTok(p.totals.totalTokens))}</div>
+      <div class="sub">${esc(p.delta)}</div>
+    </div>
+    <div class="hero-cell">
+      <div class="eyebrow">花费估算</div>
+      <div class="mid">$${esc(fmtMoney(p.totals.totalCost))}</div>
+      <div class="sub">USD · ccusage 混合定价估算</div>
+    </div>
+    <div class="hero-cell">
+      <div class="eyebrow">节点状态</div>
+      <div class="mid">${esc(p.nodeState)}</div>
+      <div class="sub">${esc(p.nodeSub)}</div>
+    </div>
+  </section>`;
+}
+
+function modelsPanel(p, mobileView) {
   const max = Math.max(...p.models.map((m) => m.totalTokens), 1);
-  p.models.slice(0, 6).forEach((m, i) => {
-    const y = top + 36 + i * 44;
-    text(add, leftX, y + 18, String(i + 1).padStart(2, "0"), 10, 400, muted, "start", "mono");
-    text(add, leftX + 34, y + 18, m.name, 18, 650, ink);
-    text(add, leftX + leftW, y + 18, `${Math.round((m.totalTokens / Math.max(p.totals.totalTokens, 1)) * 100)}%`, 13, 700, ink, "end", "mono");
-    rect(add, leftX, y + 28, leftW, 6, track);
-    rect(add, leftX, y + 28, Math.max(2, (m.totalTokens / max) * leftW), 6, ink);
-    text(add, leftX, y + 42, `${fmtTok(m.totalTokens)} tok`, 10, 400, muted, "start", "mono");
-    text(add, leftX + leftW, y + 42, `$${fmtMoney(m.cost)}`, 10, 400, muted, "end", "mono");
-    line(add, leftX, y + 48, leftX + leftW, y + 48, hair, 1);
-  });
-
-  sectionHeader(add, rightX, top, rightW, "活跃日期 · ACTIVITY", p.activity[0] ? `峰值 ${p.activity[0].period}` : "峰值 --", ink, muted);
-  text(add, rightX, top + 62, "日均 TOKEN", 10, 400, muted, "start", "mono", ".18em");
-  text(add, rightX, top + 98, p.dailyAvg, 28, 650, ink);
-  text(add, rightX + rightW, top + 62, "活跃天数", 10, 400, muted, "end", "mono", ".18em");
-  text(add, rightX + rightW, top + 98, p.activeDays, 28, 650, ink, "end");
-  line(add, rightX, top + 118, rightX + rightW, top + 118, ink, 1);
-  const maxAct = Math.max(...p.activity.map((a) => a.totalTokens), 1);
-  p.activity.slice(0, 5).forEach((a, i) => {
-    const y = top + 148 + i * 32;
-    text(add, rightX, y, dayLabel(a.period), 15, 650, ink);
-    text(add, rightX, y + 14, a.period, 10, 400, muted, "start", "mono");
-    rect(add, rightX + 118, y - 13, 392, 14, track);
-    rect(add, rightX + 118, y - 13, Math.max(2, (a.totalTokens / maxAct) * 392), 14, ink);
-    text(add, rightX + rightW, y - 1, `${Math.round((a.totalTokens / maxAct) * 100)}%`, 12, 700, ink, "end", "mono");
-  });
+  const total = Math.max(p.totals.totalTokens, 1);
+  const models = p.models.slice(0, 6);
+  return `<section class="panel ${mobileView ? "mobile-models" : ""}">
+    <div class="section-title"><strong>按模型 · By Model</strong><span>${models.length} models</span></div>
+    <div class="models">${models.map((m, i) => {
+      const share = Math.round((m.totalTokens / total) * 100);
+      const width = Math.max(2, (m.totalTokens / max) * 100).toFixed(1);
+      return `<article class="model">
+        <div class="model-head">
+          <div class="model-name"><span class="idx mono">${String(i + 1).padStart(2, "0")}</span><span class="name">${esc(shortModelName(m.name, mobileView))}</span></div>
+          <div class="bar"><i style="width:${width}%"></i></div>
+          <span class="pct">${share}%</span>
+        </div>
+        <div class="model-foot mono"><span>${esc(fmtTok(m.totalTokens))} tok</span><span>$${esc(fmtMoney(m.cost))}</span></div>
+      </article>`;
+    }).join("") || `<div class="muted mono">暂无模型数据</div>`}</div>
+  </section>`;
 }
 
-function devicesPanel(add, p, ink, muted, hair, track) {
-  const x = 32, y = 574, w = 1216;
-  sectionHeader(add, x, y, w, "按设备 · BY DEVICE", `${p.devices.length} 台设备`, ink, muted);
-  const cols = Math.max(1, p.devices.length);
-  const gap = 10;
-  const cardW = (w - gap * (cols - 1)) / cols;
-  const maxTokens = Math.max(...p.devices.map((d) => d.totalTokens), 1);
-  p.devices.forEach((d, i) => {
-    const cx = x + i * (cardW + gap);
-    const cy = y + 40;
-    const pct = d.totalTokens / maxTokens;
-    rect(add, cx, cy + 34, cardW, 1, hair);
-    circle(add, cx + 18, cy + 15, 14, track, "none", 3);
-    arc(add, cx + 18, cy + 15, 14, pct, ink, 3);
-    text(add, cx + 18, cy + 19, `${Math.round((d.totalTokens / Math.max(sumDeviceTokens(p.devices), 1)) * 100)}%`, 8, 700, ink, "middle", "mono");
-    text(add, cx + 42, cy + 7, d.name, Math.min(14, Math.max(9, cardW / 9)), 650, ink);
-    text(add, cx + 42, cy + 20, d.os, 7, 400, muted, "start", "mono");
-    text(add, cx + 42, cy + 32, `${fmtTok(d.totalTokens)} · $${fmtMoney(d.totalCost)}`, 8, 400, muted, "start", "mono");
-  });
+function activityPanel(p, mobileView) {
+  const activity = p.activity.slice(0, 5);
+  const max = Math.max(...activity.map((a) => a.totalTokens), 1);
+  return `<section class="panel ${mobileView ? "mobile-activity" : ""}">
+    <div class="section-title"><strong>活跃时段 · Activity</strong><span>${mobileView ? `日均 ${esc(p.dailyAvg)} · ${esc(p.activeDays)}` : (activity[0] ? `峰值 ${esc(activity[0].period)}` : "峰值 --")}</span></div>
+    ${mobileView ? "" : `<div class="stats">
+      <div><div class="stat-label">日均 Token</div><div class="stat-value">${esc(p.dailyAvg)}</div></div>
+      <div style="text-align:right"><div class="stat-label">活跃天数</div><div class="stat-value">${esc(p.activeDays)}</div></div>
+    </div>`}
+    <div class="activity">${activity.map((a) => {
+      const width = Math.max(2, (a.totalTokens / max) * 100).toFixed(1);
+      return `<div class="activity-row">
+        <div class="activity-label"><span class="activity-day">${esc(dayLabel(a.period))}</span><span class="activity-date mono">${esc(a.period)}</span></div>
+        <div class="activity-bar"><i style="width:${width}%"></i></div>
+        <span class="activity-share">${Math.round((a.totalTokens / max) * 100)}%</span>
+      </div>`;
+    }).join("") || `<div class="muted mono">暂无活跃数据</div>`}</div>
+  </section>`;
 }
 
-function sectionHeader(add, x, y, w, left, right, ink, muted) {
-  text(add, x, y, left, 11, 650, ink, "start", "mono", ".2em");
-  text(add, x + w, y, right, 10, 400, muted, "end", "mono", ".08em");
-  line(add, x, y + 16, x + w, y + 16, ink, 1);
+function devicesPanel(p, mobileView) {
+  const devices = mobileView ? p.mobileDevices : p.desktopDevices;
+  const total = Math.max(sumDeviceTokens(devices), 1);
+  const circ = 2 * Math.PI * 22;
+  return `<section class="panel ${mobileView ? "mobile-devices" : ""}">
+    <div class="section-title"><strong>按设备 · By Device</strong><span>${p.devices.length} 台设备</span></div>
+    <div class="devices">${devices.map((d) => {
+      const ratio = d.totalTokens / total;
+      const dash = `${(Math.max(0, Math.min(1, ratio)) * circ).toFixed(2)} ${circ.toFixed(2)}`;
+      return `<article class="device">
+        <div class="ring">
+          <svg viewBox="0 0 52 52" aria-hidden="true">
+            <circle cx="26" cy="26" r="22" fill="none" stroke="${p.theme.track}" stroke-width="4.5"></circle>
+            <circle cx="26" cy="26" r="22" fill="none" stroke="${p.theme.ink}" stroke-width="4.5" stroke-dasharray="${dash}"></circle>
+          </svg>
+          <b>${Math.round((d.totalTokens / Math.max(sumDeviceTokens(p.devices), 1)) * 100)}%</b>
+        </div>
+        <div style="min-width:0;max-width:100%">
+          <div class="device-title">${esc(d.name)}</div>
+          <div class="device-sub">${esc(d.os)}</div>
+          <div class="device-foot">${esc(fmtTok(d.totalTokens))} · $${esc(fmtMoney(d.totalCost))}</div>
+        </div>
+      </article>`;
+    }).join("") || `<div class="muted mono">暂无设备数据</div>`}</div>
+  </section>`;
 }
 
-function button(add, x, y, w, h, label, active, href, ink, bg) {
-  add(`<a href="${escAttr(href)}">`);
-  rect(add, x, y, w, h, active ? ink : "transparent", ink, 1);
-  text(add, x + w / 2, y + 19, label, 11, 650, active ? bg : ink, "middle", "mono");
-  add("</a>");
+function footer(p) {
+  return `<footer class="footer"><span>侘寂 · WABI-SABI LEDGER</span><span>${esc(p.range)} · DATA · sqlite</span></footer>`;
 }
 
 function selectedRows(period, dailyRows, monthlyRows) {
@@ -241,6 +375,18 @@ function buildDevices(machineRows, manifests) {
   }).sort((a, b) => b.totalTokens - a.totalTokens);
 }
 
+function compressDevices(devices, limit) {
+  if (devices.length <= limit) return devices;
+  const head = devices.slice(0, limit - 1);
+  const tail = devices.slice(limit - 1);
+  const totals = tail.reduce((acc, d) => {
+    acc.totalTokens += d.totalTokens;
+    acc.totalCost += d.totalCost;
+    return acc;
+  }, { totalTokens: 0, totalCost: 0 });
+  return [...head, { machine: "other", name: `其他 ${tail.length} 台`, os: "aggregated", ...totals }];
+}
+
 function buildModels(rows, totals) {
   const map = new Map();
   for (const row of rows) {
@@ -280,6 +426,11 @@ function tokenTotal(row) {
 
 function activeDayCount(rows) {
   return new Set(rows.map((r) => r.period)).size;
+}
+
+function deltaLabel(current, previous, points) {
+  if (!previous) return `${points} 个统计点`;
+  return `${current >= previous ? "↑" : "↓"} ${Math.abs((current / previous - 1) * 100).toFixed(1)}% 较上一周期`;
 }
 
 function rangeLabel(rows) {
@@ -333,11 +484,16 @@ function sumDeviceTokens(devices) {
   return devices.reduce((sum, d) => sum + d.totalTokens, 0);
 }
 
+function shortModelName(name, mobileView) {
+  if (!mobileView) return name;
+  return String(name).replace(/^claude-/i, "claude ").replace(/^gpt-/i, "gpt ").replace(/^mimo-/i, "mimo ");
+}
+
 function themes() {
   return {
-    paper: { bg: "#f4f3ee", ink: "#141414", muted: "rgba(20,20,20,.55)", hair: "rgba(20,20,20,.16)", track: "rgba(20,20,20,.10)" },
-    ink: { bg: "#141414", ink: "#efede7", muted: "rgba(239,237,231,.56)", hair: "rgba(239,237,231,.18)", track: "rgba(239,237,231,.10)" },
-    mist: { bg: "#faf9f6", ink: "#2a2a2a", muted: "rgba(42,42,42,.55)", hair: "rgba(42,42,42,.15)", track: "rgba(42,42,42,.09)" }
+    paper: { bg: "#f4f3ee", ink: "#141414", muted: "rgba(20,20,20,.55)", hair: "rgba(20,20,20,.18)", track: "rgba(20,20,20,.10)", inkRgb: "20,20,20" },
+    ink: { bg: "#141414", ink: "#efede7", muted: "rgba(239,237,231,.56)", hair: "rgba(239,237,231,.18)", track: "rgba(239,237,231,.10)", inkRgb: "239,237,231" },
+    mist: { bg: "#faf9f6", ink: "#2a2a2a", muted: "rgba(42,42,42,.55)", hair: "rgba(42,42,42,.18)", track: "rgba(42,42,42,.10)", inkRgb: "42,42,42" }
   };
 }
 
@@ -345,35 +501,6 @@ function number(value) {
   return Number.isFinite(Number(value)) ? Number(value) : 0;
 }
 
-function rect(add, x, y, w, h, fill, stroke = "none", sw = 0) {
-  add(`<rect x="${round(x)}" y="${round(y)}" width="${round(w)}" height="${round(h)}" fill="${fill}"${stroke !== "none" ? ` stroke="${stroke}" stroke-width="${sw}"` : ""}/>`);
-}
-
-function line(add, x1, y1, x2, y2, stroke, sw) {
-  add(`<line x1="${round(x1)}" y1="${round(y1)}" x2="${round(x2)}" y2="${round(y2)}" stroke="${stroke}" stroke-width="${sw}"/>`);
-}
-
-function circle(add, cx, cy, r, stroke, fill = "none", sw = 1) {
-  add(`<circle cx="${round(cx)}" cy="${round(cy)}" r="${round(r)}" fill="${fill}" stroke="${stroke}" stroke-width="${sw}"/>`);
-}
-
-function arc(add, cx, cy, r, pct, stroke, sw) {
-  const c = 2 * Math.PI * r;
-  add(`<circle cx="${round(cx)}" cy="${round(cy)}" r="${round(r)}" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-dasharray="${round(Math.max(0, Math.min(1, pct)) * c)} ${round(c)}" transform="rotate(-90 ${round(cx)} ${round(cy)})"/>`);
-}
-
-function text(add, x, y, value, size, weight, fill, anchor = "start", klass = "sans", spacing = "0") {
-  add(`<text x="${round(x)}" y="${round(y)}" fill="${fill}" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}" class="${klass}" letter-spacing="${spacing}">${escText(value)}</text>`);
-}
-
-function round(n) {
-  return Number(n).toFixed(2).replace(/\.?0+$/, "");
-}
-
-function escText(value) {
-  return String(value ?? "").replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
-}
-
-function escAttr(value) {
-  return escText(value).replace(/"/g, "&quot;");
+function esc(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
 }
