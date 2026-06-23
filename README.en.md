@@ -260,15 +260,3 @@ SQLite; the API key is not exposed to the dashboard HTML.
 Cost is the API-equivalent estimate reported by `ccusage` as `costUSD` or
 `totalCost`. It is not your real bill and does not account for subscriptions,
 bundles, credits, or local/free model usage.
-
-## Publishing
-
-Before pushing an open-source copy, check that only source files and docs are
-tracked:
-
-```sh
-git status --short
-git ls-files data
-```
-
-`git ls-files data` should print nothing.
