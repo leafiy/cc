@@ -22,7 +22,7 @@ export function renderClockDashboardHtml({ period = "week", theme = "paper" } = 
 <body>
   <main class="page">
     <header>
-      <h1>Token 用量统计</h1>
+      <h1 class="fullscreen-trigger">Token 用量统计</h1>
       <div class="stamp mono">${esc(p.range)}<br>UPDATED · ${esc(p.updated)}</div>
     </header>
     <nav class="controls">
@@ -50,11 +50,11 @@ export function renderClockDashboardHtml({ period = "week", theme = "paper" } = 
       <div class="clock-top">
         <div id="weekday" class="weekday">${esc(p.solarDate)}</div>
         <div class="weather">
-          ${weatherIcon(p.weather.condition)}
-          <div>
+          <div class="weather-main">
+            ${weatherIcon(p.weather.condition)}
             <div class="weather-now">${esc(p.weather.condition)} ${esc(p.weather.temp)}</div>
-            <div class="weather-sub mono">${esc(p.weather.range)} · ${esc(p.weather.city)} · ${esc(p.weather.wind)}</div>
           </div>
+          <div class="weather-sub mono">${esc(p.weather.range)} · ${esc(p.weather.city)}</div>
         </div>
       </div>
       <div class="time" aria-label="当前时间">
@@ -93,6 +93,13 @@ export function renderClockDashboardHtml({ period = "week", theme = "paper" } = 
     <footer class="mono"><span>侘寂 · WABI-SABI LEDGER</span><span>${esc(p.range)}</span></footer>
   </main>
   <script>
+    document.addEventListener("dblclick", async (event) => {
+      if (!event.target.closest(".fullscreen-trigger")) return;
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+      } catch {}
+    });
     const dayNames = ["周日","周一","周二","周三","周四","周五","周六"];
     const lunarDays = ["","初一","初二","初三","初四","初五","初六","初七","初八","初九","初十","十一","十二","十三","十四","十五","十六","十七","十八","十九","二十","廿一","廿二","廿三","廿四","廿五","廿六","廿七","廿八","廿九","三十"];
     function pad(n){ return String(n).padStart(2, "0"); }
@@ -149,7 +156,7 @@ function buildPayload(periodName, themeName) {
     dailyAvg: fmtTok(totals.totalTokens / Math.max(activeDays, 1)),
     activeDays: `${activeDays} 天`,
     models: models.map((m) => ({ ...m, share: totals.totalTokens ? (m.totalTokens / totals.totalTokens) * 100 : 0, width: (m.totalTokens / maxModel) * 100 })),
-    devices: devices.slice(0, 6).map((d) => {
+    devices: devices.map((d) => {
       const share = totals.totalTokens ? (d.totalTokens / totals.totalTokens) * 100 : 0;
       const circ = 2 * Math.PI * 22;
       return { ...d, share, width: (d.totalTokens / maxDevice) * 100, dash: `${(Math.min(100, Math.max(0, share)) / 100 * circ).toFixed(2)} ${circ.toFixed(2)}` };
@@ -191,10 +198,10 @@ function styles(p) {
     .sub{margin-top:clamp(5px,.7vh,10px);font-size:clamp(10px,.78vw,12px);color:${muted};white-space:nowrap}
     .clock{flex:.95;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;border:1.5px solid ${ink};padding:clamp(10px,1.35vh,18px) clamp(18px,2.4vw,44px)}
     .clock-top,.clock-foot{flex:none;display:flex;justify-content:space-between;align-items:baseline;gap:18px}
-    .weekday{font-size:clamp(20px,2.4vw,46px);font-weight:600;letter-spacing:-.01em}
-    .weather{margin-left:auto;display:flex;align-items:flex-start;justify-content:flex-end;gap:clamp(8px,.75vw,12px);text-align:left}
-    .weather svg{width:clamp(18px,1.7vw,30px);height:clamp(18px,1.7vw,30px);flex:none;margin-top:.15em}
-    .weather>div{min-width:0}
+    .weekday{font-size:clamp(16px,1.8vw,34px);font-weight:600;letter-spacing:-.01em}
+    .weather{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;text-align:right}
+    .weather-main{display:flex;align-items:center;justify-content:flex-end;gap:clamp(8px,.75vw,12px);min-width:0}
+    .weather svg{width:clamp(18px,1.7vw,30px);height:clamp(18px,1.7vw,30px);flex:none}
     .weather-now{font-size:clamp(15px,1.5vw,26px);font-weight:600;white-space:nowrap}
     .weather-sub{font-size:clamp(9px,.72vw,12px);color:${muted};margin-top:2px;white-space:nowrap}
     .time{min-height:0;display:flex;align-items:center;justify-content:center;font-weight:600;letter-spacing:-.03em;line-height:.8;font-variant-numeric:tabular-nums}
@@ -236,7 +243,7 @@ function styles(p) {
       .big,.mid{font-size:20px;margin-top:5px}
       .sub{display:none}
       .clock{flex:none;min-height:34svh;padding:10px 12px}
-      .weekday{font-size:22px}
+      .weekday{font-size:18px}
       .weather-now{font-size:14px}
       .weather-sub{font-size:9px;max-width:45vw;overflow:hidden;text-overflow:ellipsis}
       .time>span:not(.sec){font-size:clamp(52px,18vw,88px)}
@@ -258,6 +265,41 @@ function styles(p) {
       .ring{width:34px;height:34px}
       .ring b{font-size:8px}
       .device-copy span{font-size:7px}
+      footer{display:none}
+    }
+    @media (orientation:landscape) and (max-height:760px){
+      html,body{overflow:hidden}
+      .page{height:100svh;gap:6px;padding:12px 24px}
+      header{padding-bottom:6px}
+      h1{font-size:clamp(22px,2.3vw,32px)}
+      .stamp{font-size:10px;line-height:1.45}
+      .controls{gap:10px}
+      .seg a{font-size:10px;padding:7px 14px}
+      .hero-cell{padding:8px 22px}
+      .big{font-size:clamp(30px,4vw,48px);margin-top:6px}
+      .mid{font-size:clamp(26px,3.4vw,42px);margin-top:6px}
+      .sub{font-size:10px;margin-top:4px}
+      .clock{flex:none;height:clamp(116px,20svh,150px);overflow:hidden;padding:8px 28px}
+      .clock-top,.clock-foot{align-items:center}
+      .weekday{font-size:clamp(18px,2vw,28px)}
+      .weather-now{font-size:clamp(16px,1.8vw,24px)}
+      .weather-sub{font-size:10px}
+      .time{overflow:hidden}
+      .time>span:not(.sec){font-size:clamp(58px,8.2svh,84px)}
+      .sec{font-size:clamp(16px,2.2svh,22px)}
+      .clock-foot{font-size:10px}
+      .section-title{font-size:10px;padding-bottom:5px}
+      .model-list{gap:6px;padding:6px 0}
+      .model{gap:14px;grid-template-columns:minmax(150px,220px) minmax(120px,1fr) minmax(72px,96px) minmax(50px,70px) minmax(36px,48px)}
+      .model-name strong{font-size:clamp(14px,1.35vw,18px)}
+      .bar{height:7px}
+      .idx,.tok,.cost{font-size:10px}
+      .pct{font-size:14px}
+      .device-title{margin-top:4px}
+      .device-list{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 14px;padding-top:5px}
+      .ring{width:34px;height:34px}
+      .device strong{font-size:12px}
+      .device-copy span{font-size:8px}
       footer{display:none}
     }
   `;
@@ -319,7 +361,7 @@ function buildDevicesForPeriod(period, machines, dailyRows, monthlyRows) {
     rows.sort((a, b) => String(a.period).localeCompare(String(b.period)));
     const selected = period === "year" ? rows : selectedRows(period, rows, monthlyRows);
     const totals = sumRows(selected);
-    if (totals.totalTokens > 0 || totals.totalCost > 0) out.push({ machine: machine.machine, name: nodeName(machine.machine), ...totals });
+    out.push({ machine: machine.machine, name: nodeName(machine.machine), ...totals });
   }
   return out.sort((a, b) => b.totalTokens - a.totalTokens || a.name.localeCompare(b.name));
 }
