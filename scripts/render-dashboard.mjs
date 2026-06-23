@@ -7,6 +7,12 @@ const periods = [["today", "今天"], ["week", "本周"], ["month", "本月"], [
 const variants = [["paper", "札记"], ["ink", "墨"], ["mist", "雾"]];
 const nameMap = config.displayNames || {};
 
+// Data-only builder for the Vue/SSE front-end. Theme is decided client-side by
+// time of day, so we ignore it here and just return the computed payload.
+export function buildDashboardData(period = "month") {
+  return buildPayload(period, "paper");
+}
+
 export function renderDashboardHtml({ period = "month", theme = "paper" } = {}) {
   const payload = buildPayload(period, theme);
   return `<!doctype html>
@@ -46,7 +52,7 @@ function buildPayload(periodName, themeName) {
   const prev = comparisonRows(period, daily.daily || []);
   const totals = sumRows(rows);
   const prevTotals = sumRows(prev);
-  const machineRows = loadMachineRows(machines.machines || []);
+  const machineRows = loadMachineRows(machines.machines || [], periodDateFilter(period, daily.daily || []));
   const devices = buildDevices(machineRows, machines.machines || []);
   const models = buildModels(rows, totals);
   const activeDays = activeDayCount(rows);
@@ -310,13 +316,33 @@ function comparisonRows(period, dailyRows) {
   return [];
 }
 
-function loadMachineRows(machines) {
+// Build a predicate over a daily row's date that mirrors selectedRows, but is
+// anchored to the GLOBAL latest date (from the combined daily rows) so every
+// machine is compared over the identical calendar window.
+function periodDateFilter(period, globalDailyRows) {
+  const now = globalDailyRows.at(-1)?.period;
+  if (!now) return () => false;
+  if (period === "today") return (p) => p === now;
+  if (period === "week") {
+    const days = new Set(globalDailyRows.slice(-7).map((r) => r.period));
+    return (p) => days.has(p);
+  }
+  if (period === "month") {
+    const ym = now.slice(0, 7);
+    return (p) => String(p).startsWith(ym);
+  }
+  return () => true; // year/all -> lifetime
+}
+
+function loadMachineRows(machines, rowFilter = () => true) {
   const out = {};
   for (const machine of machines) {
     const rows = [];
     for (const agent of agents) {
       const payload = getReport(machine.machine, agent, "daily");
-      for (const row of payload?.daily || []) rows.push({ ...row, agent });
+      for (const row of payload?.daily || []) {
+        if (rowFilter(row.period || row.date)) rows.push({ ...row, agent });
+      }
     }
     out[machine.machine] = rows;
   }

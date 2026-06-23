@@ -8,6 +8,13 @@ const periods = [["today", "今天"], ["week", "本周"], ["month", "本月"], [
 const variants = [["paper", "札记"], ["ink", "墨"], ["mist", "雾"]];
 const nameMap = config.displayNames || {};
 
+// Data-only builder for the Vue/SSE front-end. Theme is decided client-side by
+// time of day. Clock fields (hh/mm/ss/solarDate/lunarDate) are recomputed live
+// in the browser, so they are advisory here.
+export function buildClockData(period = "week") {
+  return buildPayload(period, "paper");
+}
+
 export function renderClockDashboardHtml({ period = "week", theme = "paper" } = {}) {
   const p = buildPayload(period, theme);
   return `<!doctype html>
@@ -350,17 +357,37 @@ function buildModels(rows, totals) {
   return [...map.values()].sort((a, b) => b.totalTokens - a.totalTokens || a.name.localeCompare(b.name)).slice(0, 6);
 }
 
+// Anchor the device window to the GLOBAL latest date (from the combined daily
+// rows), not each machine's own latest date. Otherwise an inactive machine
+// would anchor "today"/"week"/"month" to whenever it last ran, comparing
+// machines over different calendar windows.
+function periodDateFilter(period, globalDailyRows) {
+  const now = globalDailyRows.at(-1)?.period;
+  if (!now) return () => false;
+  if (period === "today") return (p) => p === now;
+  if (period === "week") {
+    const days = new Set(globalDailyRows.slice(-7).map((r) => r.period));
+    return (p) => days.has(p);
+  }
+  if (period === "month") {
+    const ym = now.slice(0, 7);
+    return (p) => String(p).startsWith(ym);
+  }
+  return () => true; // year/all -> lifetime
+}
+
 function buildDevicesForPeriod(period, machines, dailyRows, monthlyRows) {
+  const matches = periodDateFilter(period, dailyRows);
   const out = [];
   for (const machine of machines) {
     const rows = [];
     for (const agent of agents) {
       const payload = getReport(machine.machine, agent, "daily");
-      for (const row of payload?.daily || []) rows.push({ ...row, period: row.period || row.date });
+      for (const row of payload?.daily || []) {
+        if (matches(row.period || row.date)) rows.push({ ...row, period: row.period || row.date });
+      }
     }
-    rows.sort((a, b) => String(a.period).localeCompare(String(b.period)));
-    const selected = period === "year" ? rows : selectedRows(period, rows, monthlyRows);
-    const totals = sumRows(selected);
+    const totals = sumRows(rows);
     out.push({ machine: machine.machine, name: nodeName(machine.machine), ...totals });
   }
   return out.sort((a, b) => b.totalTokens - a.totalTokens || a.name.localeCompare(b.name));

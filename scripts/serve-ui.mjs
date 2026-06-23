@@ -4,13 +4,14 @@ import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
 import process from "node:process";
-import { renderClockDashboardHtml } from "./render-clock-dashboard.mjs";
-import { renderDashboardHtml } from "./render-dashboard.mjs";
+import { buildClockData, renderClockDashboardHtml } from "./render-clock-dashboard.mjs";
+import { buildDashboardData, renderDashboardHtml } from "./render-dashboard.mjs";
 import { getCachedWeather, weatherCacheStatus } from "./qweather-cache.mjs";
 import { loadConfig } from "./config.mjs";
-import { getCombined, getKv, getReport, initDb } from "./sqlite-store.mjs";
+import { getCombined, getKv, getReport, initDb, queryJson } from "./sqlite-store.mjs";
 
 const root = path.resolve(import.meta.dirname, "..");
+const uiDir = path.join(root, "ui");
 const config = loadConfig();
 const host = config.ui?.host || "0.0.0.0";
 const port = Number(config.ui?.port || 8765);
@@ -26,25 +27,32 @@ initDb();
 
 http.createServer((req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-  if (url.pathname === "/" || url.pathname === "/ui/index.html") {
-    sendDashboard(res, url);
-    return;
-  }
-  if (url.pathname === "/clock" || url.pathname === "/clock/") {
-    sendClockDashboard(res, url);
-    return;
-  }
-  if (serveData(url.pathname, res)) return;
+  const pathname = url.pathname;
 
-  const routed = url.pathname === "/" ? "/ui/index.html" : decodeURIComponent(url.pathname);
-  const file = path.resolve(root, `.${routed}`);
+  // Vue app shells (front/back separated). Data arrives via JSON + SSE, so these
+  // are static and never re-render server-side — no meta-refresh flicker.
+  if (pathname === "/" || pathname === "/index.html") return sendFile(res, path.join(uiDir, "dashboard.html"));
+  if (pathname === "/clock" || pathname === "/clock/") return sendFile(res, path.join(uiDir, "clock.html"));
 
+  // Legacy server-rendered pages, kept for fallback / debugging.
+  if (pathname === "/legacy") return sendHtml(res, renderDashboardHtml({ period: url.searchParams.get("period") || config.ui?.dashboardDefaultPeriod || "month", theme: url.searchParams.get("theme") || config.ui?.defaultTheme || "paper" }));
+  if (pathname === "/legacy/clock") return sendHtml(res, renderClockDashboardHtml({ period: url.searchParams.get("period") || config.ui?.clockDefaultPeriod || "week", theme: url.searchParams.get("theme") || config.ui?.defaultTheme || "paper" }));
+
+  // JSON view payloads consumed by the Vue front-ends.
+  if (pathname === "/api/view/dashboard") return sendJson(res, safeView(() => buildDashboardData(url.searchParams.get("period") || config.ui?.dashboardDefaultPeriod || "month")));
+  if (pathname === "/api/view/clock") return sendJson(res, safeView(() => buildClockData(url.searchParams.get("period") || config.ui?.clockDefaultPeriod || "week")));
+
+  // Server-sent events: push a signal whenever the underlying SQLite changes.
+  if (pathname === "/api/events") return openEventStream(req, res);
+
+  if (serveData(pathname, res)) return;
+
+  const file = path.resolve(root, `.${decodeURIComponent(pathname)}`);
   if (!file.startsWith(root) || !existsSync(file) || !statSync(file).isFile()) {
     res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
     res.end("not found\n");
     return;
   }
-
   res.writeHead(200, {
     "content-type": types[path.extname(file)] || "application/octet-stream",
     "cache-control": file.endsWith(".json") ? "no-store" : "no-cache"
@@ -54,6 +62,74 @@ http.createServer((req, res) => {
   console.log(`ccusage UI listening on http://${host}:${port}/`);
   startAutoSync();
 });
+
+// ---------------------------------------------------------------------------
+// SSE: one watcher polls a content version (the fleet run's generated_at); on
+// change it notifies every connected client, which then re-fetches its JSON
+// view. Heartbeats keep the link alive and let the browser detect a dead
+// connection for reconnection.
+// ---------------------------------------------------------------------------
+const sseClients = new Set();
+
+function openEventStream(req, res) {
+  res.writeHead(200, {
+    "content-type": "text/event-stream; charset=utf-8",
+    "cache-control": "no-store, no-transform",
+    connection: "keep-alive",
+    "x-accel-buffering": "no"
+  });
+  res.write("retry: 3000\n\n");
+  res.write(`event: hello\ndata: ${JSON.stringify({ version: currentDataVersion() })}\n\n`);
+  sseClients.add(res);
+  req.on("close", () => sseClients.delete(res));
+}
+
+function broadcast(event, data) {
+  const frame = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const client of sseClients) {
+    try { client.write(frame); } catch { sseClients.delete(client); }
+  }
+}
+
+function currentDataVersion() {
+  // Content version, NOT file mtime. In WAL mode a write lands in the -wal
+  // sidecar and does not bump the main .sqlite mtime until a checkpoint, so an
+  // mtime watcher silently misses real updates. A read query can't change
+  // generated_at, so there is no read-feedback loop either.
+  try {
+    const rows = queryJson("SELECT generated_at AS v FROM fleet_runs WHERE id = 1");
+    return rows?.[0]?.v || "";
+  } catch { return ""; }
+}
+
+let lastDataVersion = currentDataVersion();
+setInterval(() => {
+  const version = currentDataVersion();
+  if (version !== lastDataVersion) {
+    lastDataVersion = version;
+    broadcast("update", { version });
+  }
+}, 3000).unref();
+setInterval(() => broadcast("ping", { t: Date.now() }), 15000).unref();
+
+function safeView(fn) {
+  try { return fn(); } catch (error) { return { error: error.message }; }
+}
+
+function sendFile(res, file) {
+  if (!existsSync(file)) {
+    res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+    res.end("not found\n");
+    return;
+  }
+  res.writeHead(200, { "content-type": types[path.extname(file)] || "application/octet-stream", "cache-control": "no-cache" });
+  createReadStream(file).pipe(res);
+}
+
+function sendHtml(res, html) {
+  res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+  res.end(html);
+}
 
 function startAutoSync() {
   const raw = process.env.CCUSAGE_AUTO_SYNC_MINUTES ?? config.ui?.autoSyncMinutes ?? 0;
@@ -97,30 +173,6 @@ function startAutoSync() {
     await run("full fleet sync");
   })();
   setInterval(() => run("full fleet sync"), minutes * 60_000).unref();
-}
-
-function sendDashboard(res, url) {
-  const html = renderDashboardHtml({
-    period: url.searchParams.get("period") || config.ui?.dashboardDefaultPeriod || "month",
-    theme: url.searchParams.get("theme") || config.ui?.defaultTheme || "paper"
-  });
-  res.writeHead(200, {
-    "content-type": "text/html; charset=utf-8",
-    "cache-control": "no-store"
-  });
-  res.end(html);
-}
-
-function sendClockDashboard(res, url) {
-  const html = renderClockDashboardHtml({
-    period: url.searchParams.get("period") || config.ui?.clockDefaultPeriod || "week",
-    theme: url.searchParams.get("theme") || config.ui?.defaultTheme || "paper"
-  });
-  res.writeHead(200, {
-    "content-type": "text/html; charset=utf-8",
-    "cache-control": "no-store"
-  });
-  res.end(html);
 }
 
 function serveData(pathname, res) {

@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Token Usage Clock</title>
+  <script src="/ui/vue.global.prod.js"></script>
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;min-height:100%;background:var(--bg);color:var(--ink);overflow:hidden}
+    body{font-family:"Archivo",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;transition:background .4s,color .4s}
+    .mono{font-family:"Space Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+    .page{width:100vw;height:100svh;display:flex;flex-direction:column;gap:clamp(8px,1.2vh,16px);padding:clamp(16px,2vh,34px) clamp(20px,2.6vw,64px);transform:translate3d(var(--shift-x,0),var(--shift-y,0),0);transition:transform 1.2s ease}
+    header{flex:none;display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.5px solid var(--ink);padding-bottom:clamp(8px,1.1vh,16px);gap:18px}
+    h1{margin:0;font-size:clamp(20px,2.1vw,42px);font-weight:600;letter-spacing:-.02em;line-height:.98;white-space:nowrap}
+    .stamp{text-align:right;font-size:clamp(9px,.72vw,12px);line-height:1.7;color:var(--muted);letter-spacing:.04em}
+    .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ink);margin-right:5px;vertical-align:middle}
+    .dot.off{background:transparent;border:1px solid var(--muted);animation:blink 1s steps(2) infinite}
+    @keyframes blink{50%{opacity:.2}}
+    .controls{flex:none;display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap}
+    .seg{display:flex;border:1.5px solid var(--ink);width:max-content}
+    .seg button{display:block;border-left:1.5px solid var(--ink);background:none;cursor:pointer;font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(10px,.82vw,12px);letter-spacing:.12em;text-transform:uppercase;color:var(--ink);padding:clamp(8px,1.15vh,11px) clamp(14px,1.65vw,20px)}
+    .seg button:first-child{border-left:0}
+    .seg button.active{background:var(--ink);color:var(--bg)}
+    .tone{display:flex;align-items:center;gap:12px}
+    .tone>span{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+    .hero{flex:none;display:grid;grid-template-columns:1.5fr 1fr 1fr;border:1.5px solid var(--ink)}
+    .hero-cell{min-width:0;padding:clamp(10px,1.35vh,18px) clamp(14px,1.8vw,34px);border-left:1.5px solid var(--ink)}
+    .hero-cell:first-child{border-left:0}
+    .eyebrow{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.72vw,11px);letter-spacing:.22em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+    .big{margin-top:clamp(6px,.9vh,12px);font-size:clamp(28px,3.2vw,58px);font-weight:600;letter-spacing:-.03em;line-height:.9;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .mid{margin-top:clamp(8px,1.1vh,14px);font-size:clamp(22px,2.3vw,42px);font-weight:600;letter-spacing:-.02em;line-height:.95;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .sub{margin-top:clamp(5px,.7vh,10px);font-size:clamp(10px,.78vw,12px);color:var(--muted);white-space:nowrap}
+    .clock{flex:.95;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;border:1.5px solid var(--ink);padding:clamp(10px,1.35vh,18px) clamp(18px,2.4vw,44px)}
+    .clock-top,.clock-foot{flex:none;display:flex;justify-content:space-between;align-items:baseline;gap:18px}
+    .weekday{font-size:clamp(16px,1.8vw,34px);font-weight:600;letter-spacing:-.01em}
+    .weather{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;justify-content:flex-start;text-align:right}
+    .weather-main{display:flex;align-items:center;justify-content:flex-end;gap:clamp(8px,.75vw,12px);min-width:0}
+    .weather svg{width:clamp(18px,1.7vw,30px);height:clamp(18px,1.7vw,30px);flex:none}
+    .weather-now{font-size:clamp(15px,1.5vw,26px);font-weight:600;white-space:nowrap}
+    .weather-sub{font-size:clamp(9px,.72vw,12px);color:var(--muted);margin-top:2px;white-space:nowrap}
+    .time{min-height:0;display:flex;align-items:center;justify-content:center;font-weight:600;letter-spacing:-.03em;line-height:.8;font-variant-numeric:tabular-nums}
+    .time>span:not(.sec){font-size:clamp(56px,8.5vw,150px)}
+    .colon{opacity:.5;margin:0 clamp(2px,.4vw,8px)}
+    .sec{font-size:clamp(16px,2.2vw,40px);opacity:.55;margin-left:clamp(8px,1vw,18px);line-height:1}
+    .clock-foot{font-size:clamp(10px,.85vw,14px);color:var(--muted);letter-spacing:.08em}
+    .models{flex:none;min-height:0;display:flex;flex-direction:column}
+    .section-title{flex:none;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--ink);padding-bottom:clamp(7px,1vh,12px);font-size:clamp(9px,.72vw,11px);letter-spacing:.22em;text-transform:uppercase}
+    .section-title span{color:var(--muted);letter-spacing:.1em}
+    .model-list{flex:none;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:clamp(9px,1.15vh,15px);padding:clamp(7px,.95vh,12px) 0}
+    .model{display:grid;grid-template-columns:minmax(130px,180px) minmax(120px,1fr) minmax(74px,96px) minmax(54px,72px) minmax(40px,52px);align-items:center;gap:clamp(12px,1.4vw,26px)}
+    .model-name{min-width:0;display:flex;align-items:baseline;gap:12px}
+    .idx,.tok,.cost{color:var(--muted);font-size:clamp(9px,.72vw,12px)}
+    .model-name strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(15px,1.25vw,20px);font-weight:600;letter-spacing:-.01em}
+    .bar{height:clamp(7px,.86vh,11px);background:var(--track);position:relative}
+    .bar i{position:absolute;inset:0 auto 0 0;background:var(--ink)}
+    .tok,.cost,.pct{text-align:right;white-space:nowrap}
+    .pct{font-size:clamp(13px,1.1vw,16px);font-weight:700}
+    .device-title{margin-top:clamp(2px,.35vh,6px)}
+    .device-list{flex:none;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(7px,.9vh,12px) clamp(12px,1.4vw,22px);padding:clamp(6px,.8vh,10px) 0 0}
+    .device{min-width:0;display:flex;align-items:center;gap:clamp(8px,.9vw,13px)}
+    .ring{position:relative;width:clamp(34px,3vw,48px);height:clamp(34px,3vw,48px);flex:none}
+    .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+    .ring .track{stroke:var(--track)}
+    .ring .val{stroke:var(--ink)}
+    .ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(8px,.7vw,10px);font-weight:700}
+    .device-copy{min-width:0;display:flex;flex-direction:column;gap:2px}
+    .device strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(12px,1vw,15px);font-weight:600}
+    .device-copy span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:clamp(8px,.62vw,10px)}
+    footer{flex:none;padding-top:clamp(8px,1vh,14px);border-top:1.5px solid var(--ink);display:flex;justify-content:space-between;font-size:clamp(9px,.7vw,11px);letter-spacing:.1em;color:var(--muted)}
+    @media (max-width:760px){
+      html,body{overflow:auto}
+      .page{height:auto;min-height:100svh;padding:14px;gap:8px;overflow:visible}
+      h1{font-size:19px}.stamp{font-size:9px}.controls{display:none}
+      .hero{grid-template-columns:repeat(3,minmax(0,1fr))}.hero-cell{padding:9px 10px}
+      .eyebrow{font-size:8px;letter-spacing:.12em}.big,.mid{font-size:20px;margin-top:5px}.sub{display:none}
+      .clock{flex:none;min-height:34svh;padding:10px 12px}.weekday{font-size:18px}.weather-now{font-size:14px}
+      .weather-sub{font-size:9px;max-width:45vw;overflow:hidden;text-overflow:ellipsis}
+      .time>span:not(.sec){font-size:clamp(52px,18vw,88px)}.sec{font-size:20px}
+      .models{flex:none}.section-title{font-size:9px;letter-spacing:.16em}.section-title span{display:none}
+      .model-list{gap:9px;padding:8px 0}.model{grid-template-columns:minmax(95px,1fr) minmax(80px,1fr) 54px 44px;gap:8px}
+      .model .cost{display:none}.model-name strong{font-size:12px}.idx{display:none}.bar{height:7px}.tok{font-size:8px}
+      .device-title{margin-top:8px}.device-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;padding-top:7px}
+      .device{gap:6px}.device strong{font-size:11px}.ring{width:34px;height:34px}.ring b{font-size:8px}.device-copy span{font-size:7px}footer{display:none}
+    }
+    @media (orientation:landscape) and (max-height:760px){
+      html,body{overflow:hidden}.page{height:100svh;gap:6px;padding:12px 24px}header{padding-bottom:6px}
+      h1{font-size:clamp(22px,2.3vw,32px)}.stamp{font-size:10px;line-height:1.45}.controls{gap:10px}.seg button{font-size:10px;padding:7px 14px}
+      .hero-cell{padding:8px 22px}.big{font-size:clamp(30px,4vw,48px);margin-top:6px}.mid{font-size:clamp(26px,3.4vw,42px);margin-top:6px}.sub{font-size:10px;margin-top:4px}
+      .clock{flex:none;height:clamp(116px,20svh,150px);overflow:hidden;padding:8px 28px}.clock-top,.clock-foot{align-items:center}
+      .weekday{font-size:clamp(18px,2vw,28px)}.weather-now{font-size:clamp(16px,1.8vw,24px)}.weather-sub{font-size:10px}
+      .time{overflow:hidden}.time>span:not(.sec){font-size:clamp(58px,8.2svh,84px)}.sec{font-size:clamp(16px,2.2svh,22px)}.clock-foot{font-size:10px}
+      .section-title{font-size:10px;padding-bottom:5px}.model-list{gap:6px;padding:6px 0}
+      .model{gap:14px;grid-template-columns:minmax(150px,220px) minmax(120px,1fr) minmax(72px,96px) minmax(50px,70px) minmax(36px,48px)}
+      .model-name strong{font-size:clamp(14px,1.35vw,18px)}.bar{height:7px}.idx,.tok,.cost{font-size:10px}.pct{font-size:14px}
+      .device-title{margin-top:4px}.device-list{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 14px;padding-top:5px}
+      .ring{width:34px;height:34px}.device strong{font-size:12px}.device-copy span{font-size:8px}footer{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <main class="page">
+      <header>
+        <h1 class="fullscreen-trigger" @dblclick="toggleFullscreen">Token 用量统计</h1>
+        <div class="stamp mono">{{ data.range }}<br>UPDATED · {{ data.updated }}</div>
+      </header>
+      <nav class="controls">
+        <div class="seg">
+          <button v-for="[key,label] in periods" :key="key" :class="{active:key===period}" @click="setPeriod(key)">{{ label }}</button>
+        </div>
+        <div class="tone">
+          <span>质感</span>
+          <div class="seg">
+            <button v-for="[key,label] in themesList" :key="key" :class="{active:key===themeName}" @click="setTheme(key)">{{ label }}</button>
+          </div>
+        </div>
+      </nav>
+      <section class="hero">
+        <div class="hero-cell primary"><div class="eyebrow">总 Token 消耗</div><div class="big">{{ fmtTok(data.totals.totalTokens) }}</div><div class="sub mono">{{ data.delta }}</div></div>
+        <div class="hero-cell"><div class="eyebrow">花费估算</div><div class="mid">${{ fmtMoney(data.totals.totalCost) }}</div><div class="sub mono">USD · ccusage 混合定价估算</div></div>
+        <div class="hero-cell"><div class="eyebrow">日均 Token</div><div class="mid">{{ data.dailyAvg }}</div><div class="sub mono">{{ data.activeDays }}</div></div>
+      </section>
+      <section class="clock">
+        <div class="clock-top">
+          <div class="weekday">{{ solar }}</div>
+          <div class="weather">
+            <div class="weather-main">
+              <span v-html="weatherIcon(weather.condition)"></span>
+              <div class="weather-now">{{ weather.condition }} {{ weather.temp }}</div>
+            </div>
+            <div class="weather-sub mono">{{ weather.range }} · {{ weather.city }}</div>
+          </div>
+        </div>
+        <div class="time" aria-label="当前时间">
+          <span>{{ hh }}</span><span class="colon">:</span><span>{{ mm }}</span><span class="sec mono">{{ ss }}</span>
+        </div>
+        <div class="clock-foot mono"><span>{{ lunar }}</span><span>24-HOUR · CST</span></div>
+      </section>
+      <section class="models">
+        <div class="section-title mono"><strong>按模型 · By Model</strong><span>SHARE · TOKENS · COST</span></div>
+        <div class="model-list">
+          <article class="model" v-for="(m,i) in models" :key="m.name">
+            <div class="model-name"><span class="idx mono">{{ pad2(i+1) }}</span><strong>{{ shortModelName(m.name) }}</strong></div>
+            <div class="bar"><i :style="{width:Math.max(2,m.width).toFixed(1)+'%'}"></i></div>
+            <span class="tok mono">{{ fmtTok(m.totalTokens) }} tok</span>
+            <span class="cost mono">${{ fmtMoney(m.cost) }}</span>
+            <span class="pct mono">{{ Math.round(m.share) }}%</span>
+          </article>
+          <div v-if="!models.length" class="empty mono">暂无模型数据</div>
+        </div>
+        <div class="section-title device-title mono"><strong>按设备 · By Device</strong><span>{{ devices.length }} DEVICES</span></div>
+        <div class="device-list">
+          <article class="device" v-for="d in devices" :key="d.machine">
+            <div class="ring">
+              <svg viewBox="0 0 52 52" aria-hidden="true">
+                <circle class="track" cx="26" cy="26" r="22" fill="none" stroke-width="4.5"></circle>
+                <circle class="val" cx="26" cy="26" r="22" fill="none" stroke-width="4.5" :stroke-dasharray="d.dash"></circle>
+              </svg>
+              <b>{{ Math.round(d.share) }}%</b>
+            </div>
+            <div class="device-copy">
+              <strong>{{ d.name }}</strong>
+              <span class="mono">{{ fmtTok(d.totalTokens) }} tok · ${{ fmtMoney(d.totalCost) }}</span>
+            </div>
+          </article>
+          <div v-if="!devices.length" class="empty mono">暂无设备数据</div>
+        </div>
+      </section>
+      <footer class="mono"><span>侘寂 · WABI-SABI LEDGER</span><span>{{ data.range }}</span></footer>
+    </main>
+  </div>
+
+  <script type="module">
+    import { fmtTok, fmtMoney, shortModelName, pad, solarDate, lunarDate, createThemeController,
+             startPixelShift, createLiveSource, readPeriod, writePeriod, fetchView } from "/ui/common.js";
+    const { createApp, ref, computed, onMounted } = Vue;
+    const EMPTY = { range: "", updated: "--", delta: "", dailyAvg: "0", activeDays: "0 天",
+                    totals: { totalTokens: 0, totalCost: 0 }, models: [], devices: [],
+                    weather: { condition: "", temp: "", range: "", city: "" } };
+
+    function weatherIcon(condition) {
+      const c = String(condition || "");
+      if (/雨|雷|阵雨/.test(c)) return '<svg viewBox="0 0 44 44"><path d="M13 26h19a8 8 0 0 0 0-16 12 12 0 0 0-22 5 6 6 0 0 0 3 11Z" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 32l-2 5M24 32l-2 5M33 32l-2 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+      if (/阴|云|雾/.test(c)) return '<svg viewBox="0 0 44 44"><path d="M13 30h19a8 8 0 0 0 0-16 12 12 0 0 0-22 5 6 6 0 0 0 3 11Z" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+      return '<svg viewBox="0 0 44 44"><circle cx="22" cy="22" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M22 5v5M22 34v5M5 22h5M34 22h5M10 10l4 4M30 30l4 4M34 10l-4 4M14 30l-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+    }
+
+    createApp({
+      setup() {
+        const data = ref(EMPTY);
+        const period = ref(readPeriod("week"));
+        const themeName = ref("paper");
+        const now = ref(new Date());
+        const themesList = [["paper", "札记"], ["ink", "墨"], ["mist", "雾"]];
+        let theme = null;
+        const setTheme = (k) => { if (theme) theme.setManual(k); };
+
+        const models = computed(() => (data.value.models || []).slice(0, 6));
+        const devices = computed(() => data.value.devices || []);
+        const weather = computed(() => data.value.weather || EMPTY.weather);
+        const solar = computed(() => solarDate(now.value));
+        const lunar = computed(() => lunarDate(now.value));
+        const hh = computed(() => pad(now.value.getHours()));
+        const mm = computed(() => pad(now.value.getMinutes()));
+        const ss = computed(() => pad(now.value.getSeconds()));
+
+        async function load() {
+          try { data.value = await fetchView("clock", period.value); } catch { /* keep last */ }
+        }
+        function setPeriod(p) { period.value = p; writePeriod(p); load(); }
+        function toggleFullscreen() {
+          try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen({ navigationUI: "hide" }); } catch { /* ignore */ }
+        }
+
+        onMounted(() => {
+          setInterval(() => { now.value = new Date(); }, 1000);
+          theme = createThemeController((t) => { themeName.value = t; });
+          startPixelShift({ intervalMs: 60000, max: 6 });
+          createLiveSource({ onUpdate: load });
+          load();
+        });
+
+        return { data, period, themeName, themesList, setTheme,
+                 periods: [["today","今天"],["week","本周"],["month","本月"],["year","全年"]],
+                 models, devices, weather, solar, lunar, hh, mm, ss,
+                 fmtTok, fmtMoney, shortModelName, pad2: pad, weatherIcon, setPeriod, toggleFullscreen, Math };
+      }
+    }).mount("#app");
+  </script>
+</body>
+</html>

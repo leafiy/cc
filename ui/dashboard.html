@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Token 用量统计</title>
+  <script src="/ui/vue.global.prod.js"></script>
+  <style>
+    *{box-sizing:border-box}
+    html,body{margin:0;width:100%;min-height:100%;overflow-x:hidden;overflow-y:auto;overscroll-behavior-y:auto;touch-action:pan-y;background:var(--bg);color:var(--ink)}
+    body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased;transition:background .4s,color .4s}
+    a{color:inherit;text-decoration:none}
+    button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+    /* anti burn-in shift + theme transition live on the canvas */
+    .screen{width:100vw;min-height:100svh;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);overflow:visible;transform:translate3d(var(--shift-x,0),var(--shift-y,0),0);transition:transform 1.2s ease}
+    .mono{font-family:"Space Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+    .muted{color:var(--muted)}
+    .page{width:100%;min-height:0;margin-block:auto;display:flex;flex-direction:column;gap:clamp(9px,1.35vh,16px);padding:clamp(16px,2.35vh,34px) clamp(22px,3.4vw,54px) clamp(10px,1.6vh,22px)}
+    .desktop{display:flex}
+    .mobile{display:none}
+    .top{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:1.5px solid var(--ink);padding-bottom:clamp(8px,1.05vh,13px);flex:none}
+    h1{margin:0;font-size:clamp(24px,2.5vw,34px);font-weight:600;letter-spacing:-.02em;line-height:.95;white-space:nowrap}
+    .stamp{text-align:right;font-size:clamp(9px,.72vw,11px);line-height:1.55;letter-spacing:.06em;color:var(--muted)}
+    .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ink);margin-right:5px;vertical-align:middle}
+    .dot.off{background:transparent;border:1px solid var(--muted);animation:blink 1s steps(2) infinite}
+    @keyframes blink{50%{opacity:.2}}
+    .controls{display:flex;justify-content:space-between;align-items:center;gap:18px;flex:none}
+    .seg{display:inline-flex;border:1.5px solid var(--ink)}
+    .seg button{display:block;border-left:1.5px solid var(--ink);font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(10px,.82vw,12px);letter-spacing:.12em;text-transform:uppercase;padding:clamp(8px,1.12vh,11px) clamp(14px,1.7vw,20px)}
+    .seg button:first-child{border-left:0}
+    .seg button.active{background:var(--ink);color:var(--bg)}
+    .tone{display:flex;align-items:center;gap:10px}
+    .tone-label{font-size:clamp(9px,.7vw,10px);letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+    .hero{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1.5px solid var(--ink);flex:none}
+    .hero-cell{min-width:0;padding:clamp(12px,1.65vh,20px) clamp(18px,2.35vw,30px);border-left:1.5px solid var(--ink)}
+    .hero-cell:first-child{border-left:0}
+    .eyebrow{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.72vw,11px);letter-spacing:.22em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+    .big{margin-top:clamp(7px,1vh,12px);font-size:clamp(30px,4vw,52px);font-weight:600;letter-spacing:-.035em;line-height:.9;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .mid{margin-top:clamp(7px,1vh,12px);font-size:clamp(26px,3vw,40px);font-weight:600;letter-spacing:-.03em;line-height:.92;font-variant-numeric:tabular-nums;white-space:nowrap}
+    .sub{margin-top:clamp(6px,.9vh,10px);font-size:clamp(10px,.82vw,12px);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .grid{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(260px,.85fr);gap:clamp(22px,3vw,42px);align-items:stretch}
+    .panel{min-height:0;display:flex;flex-direction:column}
+    .section-title{flex:none;display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--ink);padding-bottom:clamp(7px,1vh,12px);gap:14px}
+    .section-title strong{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.72vw,11px);letter-spacing:.22em;text-transform:uppercase;white-space:nowrap}
+    .section-title span{font-size:clamp(9px,.72vw,11px);color:var(--muted);white-space:nowrap}
+    .models{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;gap:clamp(7px,1vh,12px);padding:clamp(7px,1vh,13px) 0}
+    .model{min-height:0;padding-bottom:clamp(5px,.8vh,9px);border-bottom:1px solid var(--hair)}
+    .model-head,.model-foot{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+    .model-name{display:flex;gap:clamp(9px,1vw,12px);align-items:baseline;min-width:0}
+    .idx,.model-foot{color:var(--muted);font-size:clamp(8px,.62vw,10px)}
+    .name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(13px,1.2vw,18px);font-weight:600;letter-spacing:-.01em}
+    .pct{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(11px,.95vw,13px);font-weight:700;white-space:nowrap}
+    .bar{height:clamp(5px,.72vh,8px);background:var(--track);position:relative;margin:clamp(4px,.7vh,7px) 0}
+    .bar i{position:absolute;inset:0 auto 0 0;background:var(--ink)}
+    .devices{flex:1;min-height:0;display:grid;grid-template-columns:repeat(var(--device-cols,1),minmax(0,1fr));gap:clamp(7px,1vh,12px) clamp(14px,1.2vw,20px);padding:clamp(7px,1vh,13px) 0}
+    .device{min-width:0;display:flex;align-items:center;gap:clamp(9px,1vw,14px);border-bottom:1px solid var(--hair);padding-bottom:clamp(5px,.82vh,9px)}
+    .ring{position:relative;width:clamp(38px,3.5vw,60px);height:clamp(38px,3.5vw,60px);flex:none}
+    .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+    .ring .track{stroke:var(--track)}
+    .ring .val{stroke:var(--ink)}
+    .ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.82vw,12px);font-weight:700}
+    .device-title{font-size:clamp(12px,1.05vw,16px);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .device-sub,.device-foot{font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(8px,.62vw,10px);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .device-sub{margin-top:2px}
+    .device-foot{margin-top:clamp(4px,.6vh,8px)}
+    .footer{flex:none;padding-top:clamp(7px,1vh,13px);border-top:1.5px solid var(--ink);display:flex;justify-content:space-between;gap:20px;font-family:"Space Mono",ui-monospace,monospace;font-size:clamp(9px,.72vw,11px);letter-spacing:.1em;color:var(--muted);white-space:nowrap}
+    @media (max-width:759px){
+      .desktop{display:none}
+      .mobile{display:flex}
+      .page{min-height:0;padding:14px 14px 12px;gap:7px}
+      .top{padding-bottom:9px}
+      h1{font-size:18px}
+      .stamp{font-size:9px;line-height:1.45}
+      .mobile-tabs{display:flex;border:1.5px solid var(--ink);flex:none}
+      .mobile-tabs button{flex:1;text-align:center;font-family:"Space Mono",ui-monospace,monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:9px 0;border-left:1.5px solid var(--ink)}
+      .mobile-tabs button:first-child{border-left:0}
+      .mobile-tabs button.active{background:var(--ink);color:var(--bg)}
+      .hero-cell{padding:9px 10px}
+      .eyebrow{font-size:8px;letter-spacing:.14em}
+      .big,.mid{font-size:20px;margin-top:5px}
+      .sub{display:none}
+      .mobile-models{flex:none;min-height:0}
+      .section-title{padding-bottom:6px}
+      .section-title strong,.section-title span{font-size:9px;letter-spacing:.18em}
+      .models{padding:5px 0;gap:7px}
+      .model{padding-bottom:6px}
+      .idx{display:none}
+      .name{font-size:12px}
+      .pct{font-size:11px;text-align:right}
+      .bar{height:7px;margin:3px 0}
+      .mobile-devices{flex:none}
+      .devices{grid-template-columns:repeat(var(--device-cols,2),minmax(0,1fr));gap:5px 8px;padding:7px 0 0}
+      .device{flex-direction:column;align-items:center;text-align:center;gap:4px;border:0;padding:0}
+      .ring{width:38px;height:38px}
+      .ring b{font-size:9px}
+      .device-title{font-size:9px;max-width:100%}
+      .device-sub{display:none}
+      .device-foot{font-size:7px;margin-top:0;max-width:100%}
+      .footer{display:none}
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="screen">
+      <!-- desktop -->
+      <section class="page desktop">
+        <header class="top">
+          <h1 class="fullscreen-trigger" @dblclick="toggleFullscreen">Token 用量统计</h1>
+          <div class="stamp mono">{{ data.range }}<br>UPDATED · {{ updated }}</div>
+        </header>
+        <nav class="controls" aria-label="控制">
+          <div class="seg">
+            <button v-for="[key,label] in periods" :key="key" :class="{active:key===period}" @click="setPeriod(key)">{{ label }}</button>
+          </div>
+          <div class="tone">
+            <span class="tone-label mono">质感</span>
+            <div class="seg">
+              <button v-for="[key,label] in themesList" :key="key" :class="{active:key===themeName}" @click="setTheme(key)">{{ label }}</button>
+            </div>
+          </div>
+        </nav>
+        <section class="hero">
+          <div class="hero-cell"><div class="eyebrow">总 TOKEN 消耗</div><div class="big">{{ fmtTok(data.totals.totalTokens) }}</div><div class="sub">{{ data.delta }}</div></div>
+          <div class="hero-cell"><div class="eyebrow">花费估算</div><div class="mid">${{ fmtMoney(data.totals.totalCost) }}</div><div class="sub">USD · ccusage 混合定价估算</div></div>
+          <div class="hero-cell"><div class="eyebrow">日均 TOKEN</div><div class="mid">{{ data.dailyAvg }}</div><div class="sub">{{ data.activeDays }}</div></div>
+        </section>
+        <div class="grid">
+          <section class="panel">
+            <div class="section-title"><strong>按模型 · By Model</strong><span>{{ models.length }} models</span></div>
+            <div class="models">
+              <article class="model" v-for="(m,i) in models" :key="m.name">
+                <div class="model-head">
+                  <div class="model-name"><span class="idx mono">{{ pad2(i+1) }}</span><span class="name">{{ shortModelName(m.name) }}</span></div>
+                  <div class="bar"><i :style="{width:m.width+'%'}"></i></div>
+                  <span class="pct">{{ m.share }}%</span>
+                </div>
+                <div class="model-foot mono"><span>{{ fmtTok(m.totalTokens) }} tok</span><span>${{ fmtMoney(m.cost) }}</span></div>
+              </article>
+              <div v-if="!models.length" class="muted mono">暂无模型数据</div>
+            </div>
+          </section>
+          <section class="panel">
+            <div class="section-title"><strong>按设备 · By Device</strong><span>{{ data.devices.length }} 台设备</span></div>
+            <div class="devices" :style="{'--device-cols':dCols}">
+              <article class="device" v-for="d in desktopDevices" :key="d.machine">
+                <div class="ring">
+                  <svg viewBox="0 0 52 52" aria-hidden="true">
+                    <circle class="track" cx="26" cy="26" r="22" fill="none" stroke-width="4.5"></circle>
+                    <circle class="val" cx="26" cy="26" r="22" fill="none" stroke-width="4.5" :stroke-dasharray="ringDash(d, desktopDevices)"></circle>
+                  </svg>
+                  <b>{{ devicePct(d) }}%</b>
+                </div>
+                <div style="min-width:0;max-width:100%">
+                  <div class="device-title">{{ d.name }}</div>
+                  <div class="device-sub">{{ d.os }}</div>
+                  <div class="device-foot">{{ fmtTok(d.totalTokens) }} · ${{ fmtMoney(d.totalCost) }}</div>
+                </div>
+              </article>
+              <div v-if="!desktopDevices.length" class="muted mono">暂无设备数据</div>
+            </div>
+          </section>
+        </div>
+        <footer class="footer"><span>侘寂 · WABI-SABI LEDGER</span><span>{{ data.range }} · DATA · sqlite</span></footer>
+      </section>
+
+      <!-- mobile -->
+      <section class="page mobile">
+        <header class="top">
+          <h1 class="fullscreen-trigger" @dblclick="toggleFullscreen">Token 用量统计</h1>
+          <div class="stamp mono">{{ data.range }}<br>UPDATED · {{ updated }}</div>
+        </header>
+        <nav class="mobile-tabs" aria-label="周期">
+          <button v-for="[key,label] in periods" :key="key" :class="{active:key===period}" @click="setPeriod(key)">{{ label }}</button>
+        </nav>
+        <section class="hero">
+          <div class="hero-cell"><div class="eyebrow">总 TOKEN</div><div class="big">{{ fmtTok(data.totals.totalTokens) }}</div></div>
+          <div class="hero-cell"><div class="eyebrow">花费</div><div class="mid">${{ fmtMoney(data.totals.totalCost) }}</div></div>
+          <div class="hero-cell"><div class="eyebrow">日均</div><div class="mid">{{ data.dailyAvg }}</div></div>
+        </section>
+        <section class="panel mobile-models">
+          <div class="section-title"><strong>按模型 · By Model</strong><span>{{ models.length }} models</span></div>
+          <div class="models">
+            <article class="model" v-for="(m,i) in models" :key="'m'+m.name">
+              <div class="model-head">
+                <div class="model-name"><span class="name">{{ shortModelName(m.name) }}</span></div>
+                <div class="bar"><i :style="{width:m.width+'%'}"></i></div>
+                <span class="pct">{{ m.share }}%</span>
+              </div>
+              <div class="model-foot mono"><span>{{ fmtTok(m.totalTokens) }} tok</span><span>${{ fmtMoney(m.cost) }}</span></div>
+            </article>
+          </div>
+        </section>
+        <section class="panel mobile-devices">
+          <div class="section-title"><strong>按设备 · By Device</strong><span>{{ data.devices.length }} 台</span></div>
+          <div class="devices" :style="{'--device-cols':mCols}">
+            <article class="device" v-for="d in mobileDevices" :key="'d'+d.machine">
+              <div class="ring">
+                <svg viewBox="0 0 52 52" aria-hidden="true">
+                  <circle class="track" cx="26" cy="26" r="22" fill="none" stroke-width="4.5"></circle>
+                  <circle class="val" cx="26" cy="26" r="22" fill="none" stroke-width="4.5" :stroke-dasharray="ringDash(d, mobileDevices)"></circle>
+                </svg>
+                <b>{{ devicePct(d) }}%</b>
+              </div>
+              <div style="min-width:0;max-width:100%"><div class="device-title">{{ d.name }}</div></div>
+            </article>
+          </div>
+        </section>
+      </section>
+    </div>
+  </div>
+
+  <script type="module">
+    import { fmtTok, fmtMoney, shortModelName, pad, createThemeController, startPixelShift,
+             createLiveSource, readPeriod, writePeriod, fetchView } from "/ui/common.js";
+    const { createApp, ref, computed, onMounted } = Vue;
+    const circ = 2 * Math.PI * 22;
+    const EMPTY = { range: "", updated: "--", delta: "", dailyAvg: "0", activeDays: "0 天",
+                    totals: { totalTokens: 0, totalCost: 0 }, models: [], devices: [], desktopDevices: [], mobileDevices: [] };
+
+    createApp({
+      setup() {
+        const data = ref(EMPTY);
+        const period = ref(readPeriod("month"));
+        const themeName = ref("paper");
+
+        const sumTokens = (list) => list.reduce((s, d) => s + (d.totalTokens || 0), 0);
+
+        const models = computed(() => {
+          const list = data.value.models || [];
+          const total = Math.max(data.value.totals?.totalTokens || 0, 1);
+          const max = Math.max(...list.map((m) => m.totalTokens || 0), 1);
+          return list.slice(0, 6).map((m) => ({
+            ...m,
+            share: Math.round((m.totalTokens / total) * 100),
+            width: Math.max(2, (m.totalTokens / max) * 100).toFixed(1)
+          }));
+        });
+        const desktopDevices = computed(() => data.value.desktopDevices || []);
+        const mobileDevices = computed(() => data.value.mobileDevices || []);
+        const dCols = computed(() => (desktopDevices.value.length > 7 ? 2 : 1));
+        const mCols = computed(() => Math.min(4, Math.max(1, mobileDevices.value.length)));
+        const allDeviceTokens = computed(() => Math.max(sumTokens(data.value.devices || []), 1));
+        const updated = computed(() => data.value.updated || "--");
+        const themesList = [["paper", "札记"], ["ink", "墨"], ["mist", "雾"]];
+        let theme = null;
+        const setTheme = (k) => { if (theme) theme.setManual(k); };
+
+        const ringDash = (d, list) => {
+          const total = Math.max(sumTokens(list), 1);
+          const r = Math.max(0, Math.min(1, (d.totalTokens || 0) / total));
+          return `${(r * circ).toFixed(2)} ${circ.toFixed(2)}`;
+        };
+        const devicePct = (d) => Math.round(((d.totalTokens || 0) / allDeviceTokens.value) * 100);
+
+        async function load() {
+          try { data.value = await fetchView("dashboard", period.value); } catch { /* keep last */ }
+        }
+        function setPeriod(p) { period.value = p; writePeriod(p); load(); }
+        function toggleFullscreen() {
+          try { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen({ navigationUI: "hide" }); } catch { /* ignore */ }
+        }
+
+        onMounted(() => {
+          theme = createThemeController((t) => { themeName.value = t; });
+          startPixelShift({ intervalMs: 60000, max: 6 });
+          createLiveSource({ onUpdate: load });
+          load();
+        });
+
+        return { data, period, themeName, themesList, setTheme,
+                 periods: [["today","今天"],["week","本周"],["month","本月"],["year","全年"]],
+                 models, desktopDevices, mobileDevices, dCols, mCols, updated,
+                 fmtTok, fmtMoney, shortModelName, pad2: pad, ringDash, devicePct, setPeriod, toggleFullscreen };
+      }
+    }).mount("#app");
+  </script>
+</body>
+</html>
