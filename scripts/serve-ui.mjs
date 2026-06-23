@@ -64,27 +64,39 @@ function startAutoSync() {
   }
 
   let running = false;
-  const run = () => {
+  const run = (label, extraArgs = []) => {
     if (running) {
-      console.log("auto-sync: previous fleet sync still running, skipping this tick");
-      return;
+      console.log(`auto-sync: previous sync still running, skipping ${label}`);
+      return Promise.resolve();
     }
     running = true;
-    console.log(`auto-sync: starting fleet sync at ${new Date().toISOString()}`);
-    const child = spawn("node", [path.join(root, "scripts", "fleet-sync.mjs")], { cwd: root, stdio: "inherit" });
-    child.on("exit", (code) => {
-      running = false;
-      console.log(`auto-sync: fleet sync finished (exit ${code}) at ${new Date().toISOString()}`);
-    });
-    child.on("error", (error) => {
-      running = false;
-      console.error(`auto-sync: failed to start fleet sync: ${error.message}`);
+    console.log(`auto-sync: starting ${label} at ${new Date().toISOString()}`);
+    const child = spawn("node", [path.join(root, "scripts", "fleet-sync.mjs"), ...extraArgs], { cwd: root, stdio: "inherit" });
+    return new Promise((resolve) => {
+      child.on("exit", (code) => {
+        running = false;
+        console.log(`auto-sync: ${label} finished (exit ${code}) at ${new Date().toISOString()}`);
+        resolve();
+      });
+      child.on("error", (error) => {
+        running = false;
+        console.error(`auto-sync: ${label} failed to start: ${error.message}`);
+        resolve();
+      });
     });
   };
 
+  const localNode = (config.nodes || []).find((node) => node.mode === "local" || node.id === "local");
+
   console.log(`auto-sync: enabled, running fleet sync every ${minutes} minute(s)`);
-  run();
-  setInterval(run, minutes * 60_000).unref();
+  (async () => {
+    if (localNode) {
+      // Local collection is fast (no SSH), so surface its data first, then fill in the rest.
+      await run(`local sync (${localNode.id})`, ["--node", localNode.id]);
+    }
+    await run("full fleet sync");
+  })();
+  setInterval(() => run("full fleet sync"), minutes * 60_000).unref();
 }
 
 function sendDashboard(res, url) {
