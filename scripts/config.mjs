@@ -6,6 +6,7 @@ const repoRoot = path.resolve(import.meta.dirname, "..");
 const defaultConfig = {
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
   ccusagePackage: "ccusage@20.0.14",
+  collectLocal: true,
   storage: {
     exportJson: false
   },
@@ -71,8 +72,12 @@ export function normalizeReports(config) {
 
 function normalizeConfig(config) {
   config.nodes = (config.nodes || []).filter((node) => node && node.enabled !== false);
+  if (config.collectLocal !== false && !config.nodes.some((node) => node.mode === "local" || node.id === "local")) {
+    config.nodes.unshift({ id: "local", label: "Local machine", mode: "local" });
+  }
   config.agents = config.agents || [];
   config.displayNames = config.displayNames || {};
+  if (!config.displayNames.local) config.displayNames.local = "Local";
   config.weather = config.weather || defaultConfig.weather;
   return config;
 }

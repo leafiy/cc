@@ -103,6 +103,22 @@ Supported node fields:
 - `enabled`: set `false` to keep a sample node in config without collecting it
 - `piPaths`: extra Oh My Pi/pi-agent roots to pass to `ccusage pi --pi-path`
 
+### Collect the Local Machine by Default
+
+The top-level `collectLocal` defaults to `true`: even if your `nodes` list has
+no explicit `local` node, `fleet:sync` (and the built-in timer) automatically
+add one so the current machine's usage is always collected. This keeps the host
+counted in any multi-machine config.
+
+```json
+{
+  "collectLocal": true
+}
+```
+
+Set it to `false` to skip the local machine (e.g. the dashboard runs on a server
+with no agents). An explicit `local` node in `nodes` is still honored.
+
 ## Get Local Data
 
 Run ccusage on this machine and write JSON snapshots under `data/machines`:

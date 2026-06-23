@@ -2,6 +2,7 @@
   "timezone": "Asia/Shanghai",
   "ccusagePackage": "ccusage@20.0.14",
   "machine": "local",
+  "collectLocal": true,
   "storage": {
     "exportJson": false
   },

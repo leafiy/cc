@@ -96,6 +96,18 @@ cp ccusage.config.example.json ccusage.config.json
 - `enabled`：设置为 `false` 可以保留示例节点但不采集
 - `piPaths`：额外的 Oh My Pi/pi-agent 数据目录，会传给 `ccusage pi --pi-path`
 
+### 默认采集本机
+
+顶层的 `collectLocal` 默认是 `true`：即使你的 `nodes` 里没有显式写 `local` 节点，`fleet:sync`（以及内置定时器）也会自动加上一个本机节点来采集当前机器的用量。这样多机器配置里本机始终会被统计。
+
+```json
+{
+  "collectLocal": true
+}
+```
+
+如果不想采集本机（比如仪表盘跑在一台本身没有 agent 的服务器上），设为 `false` 关闭自动注入。已经显式写在 `nodes` 里的 `local` 节点不受影响。
+
 ## 获取本机数据
 
 在当前机器运行 `ccusage`，写入 `data/machines` 下的 JSON 快照并重建合并数据：
