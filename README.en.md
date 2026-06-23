@@ -5,10 +5,13 @@
 Local-first dashboard for aggregating coding-agent token usage with
 [`ccusage`](https://github.com/ryoppippi/ccusage). It can collect data from the
 current machine or from SSH-accessible machines, store the result in local
-SQLite, and serve two browser dashboards:
+SQLite, and serve two Vue-based browser dashboards (updated live over SSE, made
+for always-on display screens):
 
 - Standard dashboard: `/`
 - Clock dashboard: `/clock`
+
+The legacy server-rendered pages remain at `/legacy` and `/legacy/clock`.
 
 This project does not install background jobs, edit your SSH config, create
 services, or configure remote machines for you. Collection is always triggered
@@ -200,16 +203,29 @@ http://localhost:8765/
 http://localhost:8765/clock
 ```
 
-Hidden shortcut: double-click the `Token 用量统计` title in either UI to toggle
-browser fullscreen.
-
 If you changed `ui.port`, use that port instead.
+
+Interface notes:
+
+- **Themes**: three textures — 札记 (paper) / 墨 (ink) / 雾 (mist). Switch them
+  manually in the control bar, or let them follow the time of day when you don't
+  (12:00–20:00 paper, 21:00–06:00 ink, otherwise mist). A manual pick persists
+  in the tab until you change it or the session ends.
+- **Burn-in protection**: on always-on screens the whole canvas drifts by a few
+  pixels on a slow cycle so static content does not burn in.
+- **Period switch**: Today / Week / Month / Year; both the model list and the
+  device ranking are scoped to the selected period.
+- Hidden shortcut: double-click the `Token 用量统计` title to toggle fullscreen.
 
 ## Auto-refreshing Usage
 
-The UI pages already reload on their own (the standard dashboard every 60s, the
-clock dashboard every 30 minutes) and read live from SQLite. To keep the data
-itself fresh, `ui:serve` ships with a built-in timer that runs `fleet:sync` in
+The front-end is a Vue single-page app: it pulls data from `/api/view/*` and
+subscribes to `/api/events` (SSE). Whenever a background sync writes to SQLite
+the server pushes an update signal and the page refetches and updates in place
+within ~3s — **no full reload, no flicker** — which suits always-on displays.
+The client reconnects automatically (heartbeat watchdog, plus a re-check when
+the device wakes or regains network). To keep the data itself fresh, `ui:serve`
+ships with a built-in timer that runs `fleet:sync` in
 the background on a fixed interval — no system-level cron / launchd / systemd
 needed.
 
