@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { spawn } from "node:child_process";
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import http from "node:http";
 import path from "node:path";
@@ -51,7 +52,40 @@ http.createServer((req, res) => {
   createReadStream(file).pipe(res);
 }).listen(port, host, () => {
   console.log(`ccusage UI listening on http://${host}:${port}/`);
+  startAutoSync();
 });
+
+function startAutoSync() {
+  const raw = process.env.CCUSAGE_AUTO_SYNC_MINUTES ?? config.ui?.autoSyncMinutes ?? 0;
+  const minutes = Number(raw);
+  if (!Number.isFinite(minutes) || minutes <= 0) {
+    console.log("auto-sync: disabled");
+    return;
+  }
+
+  let running = false;
+  const run = () => {
+    if (running) {
+      console.log("auto-sync: previous fleet sync still running, skipping this tick");
+      return;
+    }
+    running = true;
+    console.log(`auto-sync: starting fleet sync at ${new Date().toISOString()}`);
+    const child = spawn("node", [path.join(root, "scripts", "fleet-sync.mjs")], { cwd: root, stdio: "inherit" });
+    child.on("exit", (code) => {
+      running = false;
+      console.log(`auto-sync: fleet sync finished (exit ${code}) at ${new Date().toISOString()}`);
+    });
+    child.on("error", (error) => {
+      running = false;
+      console.error(`auto-sync: failed to start fleet sync: ${error.message}`);
+    });
+  };
+
+  console.log(`auto-sync: enabled, running fleet sync every ${minutes} minute(s)`);
+  run();
+  setInterval(run, minutes * 60_000).unref();
+}
 
 function sendDashboard(res, url) {
   const html = renderDashboardHtml({

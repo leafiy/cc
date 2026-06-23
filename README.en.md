@@ -72,7 +72,8 @@ Minimal local-only config:
     "port": 8765,
     "dashboardDefaultPeriod": "month",
     "clockDefaultPeriod": "week",
-    "defaultTheme": "paper"
+    "defaultTheme": "paper",
+    "autoSyncMinutes": 10
   },
   "weather": {
     "enabled": false
@@ -187,6 +188,33 @@ Hidden shortcut: double-click the `Token 用量统计` title in either UI to tog
 browser fullscreen.
 
 If you changed `ui.port`, use that port instead.
+
+## Auto-refreshing Usage
+
+The UI pages already reload on their own (the standard dashboard every 60s, the
+clock dashboard every 30 minutes) and read live from SQLite. To keep the data
+itself fresh, `ui:serve` ships with a built-in timer that runs `fleet:sync` in
+the background on a fixed interval — no system-level cron / launchd / systemd
+needed.
+
+Control the interval with `ui.autoSyncMinutes`, default `10` (minutes):
+
+```json
+{
+  "ui": {
+    "autoSyncMinutes": 10
+  }
+}
+```
+
+- Set it to `0` to disable the built-in timer (serve pages only, no auto sync).
+- Override it ad hoc with an env var: `CCUSAGE_AUTO_SYNC_MINUTES=30 npm run ui:serve`.
+- It syncs once immediately on startup, then repeats on the interval; if the
+  previous sync is still running, the tick is skipped (no pile-up).
+- A failed sync is logged only and never takes down the UI server.
+
+Keep `npm run ui:serve` running and both collection and display refresh
+automatically.
 
 ## Optional Weather
 

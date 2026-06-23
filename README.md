@@ -65,7 +65,8 @@ cp ccusage.config.example.json ccusage.config.json
     "port": 8765,
     "dashboardDefaultPeriod": "month",
     "clockDefaultPeriod": "week",
-    "defaultTheme": "paper"
+    "defaultTheme": "paper",
+    "autoSyncMinutes": 10
   },
   "weather": {
     "enabled": false
@@ -174,6 +175,27 @@ http://localhost:8765/clock
 隐藏操作：在任一 UI 中双击标题 `Token 用量统计`，可以切换浏览器全屏。
 
 如果你修改了 `ui.port`，使用你配置的端口。
+
+## 自动刷新用量
+
+UI 页面本身已经会自动重载（标准仪表盘每 60 秒，时钟仪表盘每 30 分钟），并实时从 SQLite 读取数据。要让数据本身也自动更新，`ui:serve` 内置了一个定时器，会按固定间隔在后台运行一次 `fleet:sync`，无需配置系统级的 cron / launchd / systemd。
+
+用 `ui.autoSyncMinutes` 控制采集间隔，默认 `10`（分钟）：
+
+```json
+{
+  "ui": {
+    "autoSyncMinutes": 10
+  }
+}
+```
+
+- 设为 `0` 关闭内置定时器（只服务页面，不自动采集）。
+- 也可以用环境变量临时覆盖：`CCUSAGE_AUTO_SYNC_MINUTES=30 npm run ui:serve`。
+- 启动时会先立即采集一次，之后按间隔重复；如果上一次采集还没结束，本次会跳过，不会叠加。
+- 采集失败只记录日志，不会影响 UI 服务。
+
+这样只需要保持 `npm run ui:serve` 运行，采集和展示就都自动刷新了。
 
 ## 可选天气
 

@@ -14,7 +14,8 @@ const defaultConfig = {
     port: 8765,
     dashboardDefaultPeriod: "month",
     clockDefaultPeriod: "week",
-    defaultTheme: "paper"
+    defaultTheme: "paper",
+    autoSyncMinutes: 10
   },
   agents: ["claude", "codex", "opencode", "pi"],
   nodes: [
