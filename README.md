@@ -171,6 +171,8 @@ http://localhost:8765/
 http://localhost:8765/clock
 ```
 
+隐藏操作：在任一 UI 中双击标题 `Token 用量统计`，可以切换浏览器全屏。
+
 如果你修改了 `ui.port`，使用你配置的端口。
 
 ## 可选天气

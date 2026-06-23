@@ -183,6 +183,9 @@ http://localhost:8765/
 http://localhost:8765/clock
 ```
 
+Hidden shortcut: double-click the `Token 用量统计` title in either UI to toggle
+browser fullscreen.
+
 If you changed `ui.port`, use that port instead.
 
 ## Optional Weather
